@@ -1835,6 +1835,14 @@
           unlockProFeatures();
         }
       });
+      // Default startup mode: Cut Out. Switch immediately after DOM is ready.
+      document.addEventListener('DOMContentLoaded', function() {
+        try {
+          if (!isCutOutMode && typeof toggleCutOutMode === 'function') {
+            toggleCutOutMode();
+          }
+        } catch (_e) {}
+      });
       // Observe DOM mutations briefly to unlock newly inserted UI if user is pro
       (function observeProUi() {
         if (!('MutationObserver' in window)) return;
@@ -3072,7 +3080,7 @@
     btn.classList.add('cutout-toggle');
     const labelEl = btn.querySelector('.cutout-label');
     if (labelEl) {
-      labelEl.textContent = active ? 'EXIT CUT OUT MODE' : 'ENTER CUT OUT MODE';
+      labelEl.textContent = active ? 'ENTER FRAME MODE' : 'ENTER CUT OUT MODE';
       labelEl.classList.remove('mesh-green','mesh-red');
       labelEl.classList.add(active ? 'mesh-red' : 'mesh-green', 'mesh-text');
     }
