@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Sign in with Google</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: transparent; }
+    .container { display: flex; align-items: center; justify-content: center; height: 40px; }
+  </style>
+  
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script>
+    // Minimal cookie persistence to share session with index.html
+    function setCookie(name, value, days) {
+      try {
+        var maxAge = Math.max(1, Math.floor(days * 86400));
+        document.cookie = name + '=' + encodeURIComponent(value) + '; Max-Age=' + maxAge + '; Path=/; SameSite=Lax';
+      } catch (e) {}
+    }
+    var USER_COOKIE_KEY = 'frameStudioUserCookie';
+    // Backend domains to try (first is primary)
+    var BACKEND_URLS = [
+      'https://backend-navy-psi-26.vercel.app',
+      'https://backend-gemexqvsd-jordanlevykislev7-9559s-projects.vercel.app'
+    ];
+
+    function decodeJwtPayload(idToken) {
+      try {
+        var payload = idToken.split('.')[1];
+        var base64 = payload.replace(/-/g, '+').replace(/_/g, '/');
+        var padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, '=');
+        var json = atob(padded);
+        return JSON.parse(json);
+      } catch (e) { return {}; }
+    }
+
+    function normalizeEmail(email) {
+      return (email || '').trim().toLowerCase();
+    }
+
+    async function tryFetchEmailLog(baseUrl) {
+      var url = baseUrl.replace(/\/+$/, '') + '/api/email-log';
+      var controller = new AbortController();
+      var timeoutId = setTimeout(function() { controller.abort(); }, 6000);
+      try {
+        var resp = await fetch(url, {
+          method: 'GET',
+          mode: 'cors',
+          cache: 'no-store',
+          credentials: 'omit',
+          headers: { 'Accept': 'application/json' },
+          signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        return await resp.json();
+      } catch (e) {
+        clearTimeout(timeoutId);
+        throw e;
+      }
+    }
+
+    async function isProUserByEmail(email) {
+      var target = normalizeEmail(email);
+      if (!target) return false;
+
+      for (var i = 0; i < BACKEND_URLS.length; i++) {
+        try {
+          var records = await tryFetchEmailLog(BACKEND_URLS[i]);
+          if (Array.isArray(records)) {
+            for (var j = 0; j < records.length; j++) {
+              var entry = records[j] || {};
+              var storedEmail = normalizeEmail(entry.email || entry.customerEmail || '');
+              if (storedEmail && storedEmail === target) {
+                return true;
+              }
+            }
+          }
+        } catch (e) {
+          // Try next backend URL
+        }
+      }
+      return false;
+    }
+
+    function handleCredentialResponse(response) {
+      try {
+        var claims = decodeJwtPayload(response.credential || '');
+        var name = claims.name || claims.given_name || '';
+        var picture = claims.picture || '';
+        var email = claims.email || '';
+
+        // Post the original message for backward compatibility
+        window.parent.postMessage({ type: 'google_credential', credential: response.credential, name: name, picture: picture, email: email || '' }, '*');
+
+        // Determine membership and notify parent so it can remove upgrade button if needed
+        Promise.resolve()
+          .then(function () { return isProUserByEmail(email); })
+          .then(function (isPro) {
+            try {
+              // Persist minimal session to cookie so index.html can restore pro on reload
+              var payload = {
+                email: email || '',
+                picture: picture || '',
+                isPro: !!isPro,
+                proCheckedAt: Date.now(),
+                timestamp: Date.now()
+              };
+              setCookie(USER_COOKIE_KEY, JSON.stringify(payload), 365);
+              if (isPro) {
+                // Dedicated fast-unlock cookie
+                setCookie('frameStudioPro', '1', 365);
+              }
+            } catch (e) {}
+            window.parent.postMessage({ type: 'pro_membership', email: email || '', isPro: !!isPro }, '*');
+          })
+          .catch(function () {
+            try {
+              var payload = {
+                email: email || '',
+                picture: picture || '',
+                isPro: false,
+                proCheckedAt: Date.now(),
+                timestamp: Date.now()
+              };
+              setCookie(USER_COOKIE_KEY, JSON.stringify(payload), 365);
+              // Do not set pro cookie on failure; leave as is
+            } catch (e) {}
+            window.parent.postMessage({ type: 'pro_membership', email: email || '', isPro: false }, '*');
+          });
+      } catch (e) {
+        window.parent.postMessage({ type: 'google_credential', credential: response.credential }, '*');
+      }
+    }
+  </script>
+  </head>
+<body>
+  <div class="container">
+    <div id="g_id_onload"
+      data-client_id="961116957473-4de06h1a1tluugp2p1pkc1pm4ipdhjn3.apps.googleusercontent.com"
+      data-callback="handleCredentialResponse"
+      data-auto_prompt="false">
+    </div>
+    <div class="g_id_signin"
+      data-type="standard"
+      data-size="large"
+      data-theme="outline"
+      data-text="signin_with"
+      data-shape="rectangular"
+      data-logo_alignment="left">
+    </div>
+  </div>
+</body>
+</html>
+
+
+
