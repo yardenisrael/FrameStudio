@@ -1468,8 +1468,13 @@
             timestamp: Date.now()
           };
           setCookie(USER_COOKIE_KEY, JSON.stringify(minimal), 365);
-          // Dedicated PRO cookie for fast, unsafe unlock
-          if (minimal.isPro) setCookie(PRO_COOKIE_KEY, '1', 365);
+          // Dedicated PRO cookie for fast, unsafe unlock - set when pro, DELETE when not pro
+          if (minimal.isPro) {
+            setCookie(PRO_COOKIE_KEY, '1', 365);
+          } else {
+            // IMPORTANT: Delete stale pro cookie to avoid interference with new registered users
+            deleteCookie(PRO_COOKIE_KEY);
+          }
         } catch (_e3) {}
         devLogAuthState('after storeUserSession', { isPro: !!(merged && merged.isPro) });
       }
@@ -1577,28 +1582,35 @@
         const now = Date.now();
         const forceCheck = options && options.forceCheck;
         const lastCheck = session.proCheckedAt || 0;
-        // Absolute priority: dedicated pro cookie forces unlock; skip checks
-        try {
-          if (getCookie(PRO_COOKIE_KEY) === '1') {
-            session.isPro = true;
-            session.proCheckedAt = now;
+        // When forceCheck is true, ALWAYS verify with backend - don't trust stale cookie
+        if (!forceCheck) {
+          // Only trust dedicated pro cookie when NOT force-checking
+          try {
+            if (getCookie(PRO_COOKIE_KEY) === '1') {
+              session.isPro = true;
+              session.proCheckedAt = now;
+              unlockProFeatures();
+              return session;
+            }
+          } catch (_e) {}
+          if (session.isPro) {
             unlockProFeatures();
             return session;
           }
-        } catch (_e) {}
-        if (!forceCheck && session.isPro) {
-          unlockProFeatures();
-          return session;
+          if (now - lastCheck < PRO_STATUS_CACHE_TTL) {
+            if (session.isPro) unlockProFeatures();
+            return session;
+          }
         }
-        if (!forceCheck && now - lastCheck < PRO_STATUS_CACHE_TTL) {
-          if (session.isPro) unlockProFeatures();
-          return session;
-        }
+        // Perform backend check
         const isPro = await checkProMembership(session.email);
         session.proCheckedAt = now;
         if (isPro) {
           session.isPro = true;
           unlockProFeatures();
+        } else {
+          // Explicitly set to false after backend verification (ensures stale state is cleared)
+          session.isPro = false;
         }
         return session;
       }
@@ -21175,6 +21187,3 @@
 </body>
 </html>
 </html>
-
-
-
