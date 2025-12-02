@@ -1834,12 +1834,14 @@
           // Call a lightweight UI refresher: unlockProFeatures is idempotent due to guard
           unlockProFeatures();
         }
-      });
-      // Default startup mode: Cut Out. Switch immediately after DOM is ready.
-      document.addEventListener('DOMContentLoaded', function() {
+        // Enter Cut Out mode by default on initial load
         try {
-          if (!isCutOutMode && typeof toggleCutOutMode === 'function') {
+          if (typeof isCutOutMode !== 'undefined' && !isCutOutMode && typeof toggleCutOutMode === 'function') {
             toggleCutOutMode();
+          } else if (typeof setCutOutToggleButtonUi === 'function') {
+            setCutOutToggleButtonUi(isCutOutMode);
+            applyRightSidebarCutoutVisibility(isCutOutMode);
+            if (isCutOutMode && typeof initCutOutMode === 'function') initCutOutMode();
           }
         } catch (_e) {}
       });
@@ -3080,7 +3082,8 @@
     btn.classList.add('cutout-toggle');
     const labelEl = btn.querySelector('.cutout-label');
     if (labelEl) {
-      labelEl.textContent = active ? 'ENTER FRAME MODE' : 'ENTER CUT OUT MODE';
+      // When Cut Out is active, offer to enter frame mode; otherwise offer to exit back to Cut Out
+      labelEl.textContent = active ? 'ENTER TO FRAME MODE' : 'EXIT TO CUT OUT MODE';
       labelEl.classList.remove('mesh-green','mesh-red');
       labelEl.classList.add(active ? 'mesh-red' : 'mesh-green', 'mesh-text');
     }
@@ -3997,6 +4000,40 @@
             value: lerp(a.value, b.value, alpha)
           }));
           if (op) { drawObj.opacity = Math.max(0, Math.min(1, op.value)); }
+          // Apply bone transformation AFTER keyframes to keep bone-pinned position consistent
+          // This ensures the object stays at its bone-adjusted position even when keyframes exist
+          try {
+            let linkedBone = null;
+            for (let bi = 0; bi < cutoutBones.length; bi++) {
+              const bone = cutoutBones[bi];
+              if (!bone || bone.clipIndex !== idx) continue;
+              if (bone.objectRef === obj || (bone.objectRef && obj && bone.objectRef.id != null && obj.id != null && bone.objectRef.id === obj.id)) {
+                linkedBone = bone;
+                break;
+              }
+            }
+            if (linkedBone && typeof linkedBone.pinnedLocalX === 'number' && typeof linkedBone.pinnedLocalY === 'number') {
+              const boneBaseW = (drawObj.drawW != null) ? drawObj.drawW : ((drawObj.img && (drawObj.img.naturalWidth || drawObj.img.width || drawObj.img.videoWidth)) || 0);
+              const boneBaseH = (drawObj.drawH != null) ? drawObj.drawH : ((drawObj.img && (drawObj.img.naturalHeight || drawObj.img.height || drawObj.img.videoHeight)) || 0);
+              const boneEffScaleX = (typeof drawObj.scaleX === 'number' ? drawObj.scaleX : 1);
+              const boneEffScaleY = (typeof drawObj.scaleY === 'number' ? drawObj.scaleY : 1);
+              const boneW = boneBaseW * (drawObj.scale || 1) * boneEffScaleX;
+              const boneH = boneBaseH * (drawObj.scale || 1) * boneEffScaleY;
+              const bonePx = linkedBone.pinnedLocalX;
+              const bonePy = linkedBone.pinnedLocalY;
+              const boneRot = drawObj.rotation || 0;
+              const boneCos = Math.cos(boneRot), boneSin = Math.sin(boneRot);
+              const boneRx = bonePx * boneCos - bonePy * boneSin;
+              const boneRy = bonePx * boneSin + bonePy * boneCos;
+              const boneCenterX = linkedBone.startX - boneRx;
+              const boneCenterY = linkedBone.startY - boneRy;
+              drawObj.x = boneCenterX - boneW / 2;
+              drawObj.y = boneCenterY - boneH / 2;
+              // Also update the source object to keep state consistent
+              obj.x = drawObj.x;
+              obj.y = drawObj.y;
+            }
+          } catch (_boneErr) {}
           // Composite animated object
           drawRotatedImage(cutoutCtx, drawObj);
         }
@@ -5203,6 +5240,9 @@
       if (!cutoutSelectedObject) return;
       e.preventDefault();
       e.stopPropagation();
+      // Clear unrelated pending keys to avoid committing stale transforms from prior drags
+      if (!cutoutPendingDragKeys) cutoutPendingDragKeys = { position: null, rotation: null, zoom: null, opacity: null };
+      else { cutoutPendingDragKeys.rotation = null; cutoutPendingDragKeys.zoom = null; cutoutPendingDragKeys.opacity = null; }
       if (axis === 'x') { isDraggingPosX = true; isDraggingPosY = false; posDragStartValue = cutoutSelectedObject.x; }
       else { isDraggingPosX = false; isDraggingPosY = true; posDragStartValue = cutoutSelectedObject.y; }
       posDragStartMouseX = e.clientX;
@@ -5213,12 +5253,36 @@
       if (!cutoutSelectedObject) return;
       if (!isDraggingPosX && !isDraggingPosY) return;
       const delta = e.clientX - posDragStartMouseX; // right increases, left decreases
-      if (isDraggingPosX) {
-        cutoutSelectedObject.x = posDragStartValue + delta;
-      } else if (isDraggingPosY) {
-        cutoutSelectedObject.y = posDragStartValue + delta;
-      }
+      // Compute new position and preserve previous to move any attached bones accordingly
+      const prevX = cutoutSelectedObject.x;
+      const prevY = cutoutSelectedObject.y;
+      if (isDraggingPosX) { cutoutSelectedObject.x = posDragStartValue + delta; }
+      else if (isDraggingPosY) { cutoutSelectedObject.y = posDragStartValue + delta; }
+      const dx = (cutoutSelectedObject.x - prevX) || 0;
+      const dy = (cutoutSelectedObject.y - prevY) || 0;
+      // Move any bones attached to this object to maintain relative positions
+      try {
+        const activeClip = typeof getActiveCutoutClipIndex === 'function' ? getActiveCutoutClipIndex() : -1;
+        for (let i = 0; i < cutoutBones.length; i++) {
+          const b = cutoutBones[i];
+          if (!b || (activeClip >= 0 && b.clipIndex !== activeClip)) continue;
+          if (b.objectRef === cutoutSelectedObject) {
+            b.startX += dx; b.startY += dy;
+            b.endX += dx; b.endY += dy;
+            const cw = cutoutCanvas ? cutoutCanvas.width : 0;
+            const ch = cutoutCanvas ? cutoutCanvas.height : 0;
+            if (cw && ch) {
+              b.startX = Math.max(0, Math.min(cw, b.startX));
+              b.startY = Math.max(0, Math.min(ch, b.startY));
+              b.endX = Math.max(0, Math.min(cw, b.endX));
+              b.endY = Math.max(0, Math.min(ch, b.endY));
+            }
+          }
+        }
+      } catch (_e) {}
       cutoutRenderSelectionOverlay();
+      // Keep base preview in sync to avoid any trails during numeric position drags
+      try { scheduleCutoutPreviewForTime(); } catch (_e) {}
       updateCutoutPositionDisplay(cutoutSelectedObject.x, cutoutSelectedObject.y);
       if (cutoutRecorderArmed) {
         addOrUpdatePropKeyAt('position', cutoutCurrentTime, { x: cutoutSelectedObject.x, y: cutoutSelectedObject.y });
@@ -5236,6 +5300,9 @@
       if (!cutoutSelectedObject) return;
       e.preventDefault();
       e.stopPropagation();
+      // Clear unrelated pending keys so only zoom (and derived position) will be committed
+      if (!cutoutPendingDragKeys) cutoutPendingDragKeys = { position: null, rotation: null, zoom: null, opacity: null };
+      else { cutoutPendingDragKeys.rotation = null; cutoutPendingDragKeys.position = null; cutoutPendingDragKeys.opacity = null; }
       if (typeof cutoutSelectedObject.scaleX !== 'number') cutoutSelectedObject.scaleX = 1;
       if (typeof cutoutSelectedObject.scaleY !== 'number') cutoutSelectedObject.scaleY = 1;
       isDraggingZoom = true;
@@ -5307,6 +5374,9 @@
       if (!cutoutSelectedObject) return;
       e.preventDefault();
       e.stopPropagation();
+      // Clear unrelated pending keys to avoid committing stale position/zoom on rotation change
+      if (!cutoutPendingDragKeys) cutoutPendingDragKeys = { position: null, rotation: null, zoom: null, opacity: null };
+      else { cutoutPendingDragKeys.position = null; cutoutPendingDragKeys.zoom = null; cutoutPendingDragKeys.opacity = null; }
       isDraggingRotSlider = true;
       rotSliderStartX = e.clientX;
       window.addEventListener('mousemove', onRotSliderDrag);
@@ -5873,6 +5943,23 @@
         rotationStartAngle = Math.atan2(y - rotationCenterY, x - rotationCenterX);
         rotationCurrentAngle = cutoutSelectedObject.rotation || 0;
         cutoutIsRotatingObj = true;
+        // Clear unrelated pending keys so only rotation is committed on mouseup
+        // But for bone-linked objects, position may also change during rotation
+        if (!cutoutPendingDragKeys) cutoutPendingDragKeys = { position: null, rotation: null, zoom: null, opacity: null };
+        else { cutoutPendingDragKeys.zoom = null; cutoutPendingDragKeys.opacity = null; }
+        // Check if object is bone-linked - if so, keep position tracking enabled
+        let hasBoneLink = false;
+        try {
+          const activeClipCheck = getActiveCutoutClipIndex();
+          for (let i = 0; i < cutoutBones.length; i++) {
+            const bb = cutoutBones[i];
+            if (bb && bb.clipIndex === activeClipCheck && bb.objectRef === cutoutSelectedObject) { hasBoneLink = true; break; }
+          }
+        } catch (_e) {}
+        if (!hasBoneLink) cutoutPendingDragKeys.position = null;
+        // Immediately re-render base without the selected object and draw overlay to avoid trails
+        try { renderCutoutPreviewForTime(); } catch (_e) {}
+        try { cutoutRenderSelectionOverlay(); } catch (_e) {}
         // If this object is attached to a bone, compute pinned local offset to keep start node fixed during rotation
         try {
           const activeClip = getActiveCutoutClipIndex();
@@ -5977,9 +6064,16 @@
             const centerY = linked.startY - ry;
             obj.x = centerX - w / 2;
             obj.y = centerY - h / 2;
+            // Track position change for bone-linked rotation (position changes to keep bone pinned)
+            if (cutoutRecorderArmed) {
+              if (!cutoutPendingDragKeys) cutoutPendingDragKeys = {};
+              cutoutPendingDragKeys.position = { time: cutoutCurrentTime, x: obj.x, y: obj.y };
+            }
           }
         } catch (_e) {}
         cutoutRenderSelectionOverlay();
+        // Keep the base preview in sync during rotation so no trails remain
+        try { scheduleCutoutPreviewForTime(); } catch (_e) {}
         updateCutoutPositionDisplay(cutoutSelectedObject.x, cutoutSelectedObject.y);
         if (cutoutRecorderArmed) {
           const deg = ((cutoutSelectedObject.rotation || 0) * 180) / Math.PI;
@@ -6050,6 +6144,18 @@
     
     function cutoutSelectionMouseUp() {
       if (!cutoutSelectedObject) return;
+      // Check if this was a bone-linked rotation - if so, position changed and should be persisted
+      let wasBoneLinkedRotation = false;
+      try {
+        const activeClipUp = getActiveCutoutClipIndex();
+        for (let bi = 0; bi < cutoutBones.length; bi++) {
+          const bone = cutoutBones[bi];
+          if (bone && bone.clipIndex === activeClipUp && bone.objectRef === cutoutSelectedObject) {
+            wasBoneLinkedRotation = cutoutIsRotatingObj;
+            break;
+          }
+        }
+      } catch (_e) {}
       // Stop interaction but keep selection and overlay active
       cutoutIsDraggingObj = false;
       cutoutIsRotatingObj = false;
@@ -6057,6 +6163,22 @@
       activeTransformHandle = '';
       cutoutRenderSelectionOverlay();
       renderCutoutPreviewForTime();
+      // For bone-linked rotation, ensure position is persisted even without recorder armed
+      // This makes the bone-adjusted position the new "memory" state
+      if (wasBoneLinkedRotation && !cutoutRecorderArmed) {
+        // Update any existing position keyframe at current time to the bone-adjusted position
+        try {
+          const posKeys = getOrCreatePropKeys('position');
+          const epsilon = 1 / 60;
+          const existingIdx = posKeys.findIndex(k => Math.abs(k.time - cutoutCurrentTime) <= epsilon);
+          if (existingIdx >= 0) {
+            posKeys[existingIdx].x = cutoutSelectedObject.x;
+            posKeys[existingIdx].y = cutoutSelectedObject.y;
+          }
+          drawCutoutTimeline();
+          updateRowKeyActiveStates();
+        } catch (_e) {}
+      }
       // Commit any buffered key updates from drag/rotate now that interaction ended
       if (cutoutRecorderArmed && cutoutPendingDragKeys) {
         let committed = false;
