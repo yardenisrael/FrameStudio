@@ -5092,6 +5092,37 @@
           e.dataTransfer.dropEffect = 'move';
           e.dataTransfer.effectAllowed = 'copyMove';
         });
+        // Allow dropping another object row onto this row to merge objects
+        row.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          row.style.boxShadow = `0 0 0 1px ${obj.color || '#6366f1'} inset`;
+        });
+        row.addEventListener('dragleave', () => {
+          row.style.boxShadow = '';
+        });
+        row.addEventListener('drop', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          row.style.boxShadow = '';
+          const idStr = e.dataTransfer.getData('text/plain') || e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text');
+          const sourceId = parseInt(idStr, 10);
+          if (!Number.isFinite(sourceId)) return;
+          const source = objects.find(o => o && o.id === sourceId);
+          const target = obj;
+          if (!source || !target || source === target) return;
+          // Only merge within same clip and layer for predictability
+          const srcLayer = Number.isFinite(source.layerIndex) ? source.layerIndex : 0;
+          const tgtLayer = Number.isFinite(target.layerIndex) ? target.layerIndex : 0;
+          if (srcLayer !== tgtLayer) return;
+          try { saveState(); } catch (_e) {}
+          try {
+            mergeCutoutObjectsWithinClip(clip, source, target);
+            if (typeof renderCutoutObjectsList === 'function') renderCutoutObjectsList();
+            renderCutoutPreviewForTime();
+            renderCutoutClips && renderCutoutClips();
+          } catch (_e) {}
+        });
         row.addEventListener('click', () => {
           // Selecting an object also sets the active layer to that object's layer
           if (Number.isFinite(obj.layerIndex)) {
@@ -5127,6 +5158,122 @@
         row.appendChild(label);
         list.appendChild(row);
       });
+    }
+    
+    // Merge two objects within the same clip by baking their bitmaps and keys.
+    // The resulting object retains the lower id; the higher id object is removed.
+    function mergeCutoutObjectsWithinClip(clip, a, b) {
+      if (!clip || !a || !b) return;
+      const keep = (Number.isFinite(a.id) && Number.isFinite(b.id)) ? (a.id <= b.id ? a : b) : a;
+      const drop = (keep === a) ? b : a;
+      // Helper to compute rotated AABB corners, matching drawRotatedImage geometry
+      const computeRotatedAabb = (obj) => {
+        const objScaleX = (obj && typeof obj.scaleX === 'number') ? obj.scaleX : 1;
+        const objScaleY = (obj && typeof obj.scaleY === 'number') ? obj.scaleY : 1;
+        const baseW = (obj && obj.drawW != null)
+          ? obj.drawW
+          : ((obj && obj.img && (obj.img.naturalWidth || obj.img.width || obj.img.videoWidth)) || 0);
+        const baseH = (obj && obj.drawH != null)
+          ? obj.drawH
+          : ((obj && obj.img && (obj.img.naturalHeight || obj.img.height || obj.img.videoHeight)) || 0);
+        const w = baseW * (obj.scale || 1) * objScaleX;
+        const h = baseH * (obj.scale || 1) * objScaleY;
+        const cx = obj.x + w / 2;
+        const cy = obj.y + h / 2;
+        const rot = obj.rotation || 0;
+        const rotatePoint = (px, py) => {
+          const dx = px - cx, dy = py - cy;
+          return { x: cx + dx * Math.cos(rot) - dy * Math.sin(rot), y: cy + dx * Math.sin(rot) + dy * Math.cos(rot) };
+        };
+        const tl = rotatePoint(obj.x, obj.y);
+        const tr = rotatePoint(obj.x + w, obj.y);
+        const br = rotatePoint(obj.x + w, obj.y + h);
+        const bl = rotatePoint(obj.x, obj.y + h);
+        const xs = [tl.x, tr.x, br.x, bl.x];
+        const ys = [tl.y, tr.y, br.y, bl.y];
+        return {
+          x: Math.floor(Math.min(...xs)),
+          y: Math.floor(Math.min(...ys)),
+          r: Math.ceil(Math.max(...xs)),
+          b: Math.ceil(Math.max(...ys))
+        };
+      };
+      const ra = computeRotatedAabb(keep);
+      const rb = computeRotatedAabb(drop);
+      const union = {
+        x: Math.min(ra.x, rb.x),
+        y: Math.min(ra.y, rb.y),
+        r: Math.max(ra.r, rb.r),
+        b: Math.max(ra.b, rb.b)
+      };
+      const newW = Math.max(1, union.r - union.x);
+      const newH = Math.max(1, union.b - union.y);
+      const merged = document.createElement('canvas');
+      merged.width = newW; merged.height = newH;
+      const mctx = merged.getContext('2d', { willReadFrequently: true });
+      // Draw both objects into union canvas using drawRotatedImage with offsets
+      try { drawRotatedImage(mctx, keep, 1, 1, -union.x, -union.y); } catch (_e) {}
+      try { drawRotatedImage(mctx, drop, 1, 1, -union.x, -union.y); } catch (_e) {}
+      const dataUrl = merged.toDataURL('image/png');
+      // Update keep object to merged
+      keep.img = merged;
+      keep.src = dataUrl;
+      keep.drawW = merged.width;
+      keep.drawH = merged.height;
+      keep.x = union.x;
+      keep.y = union.y;
+      // Merge keys across both objects with de-duplication around same time
+      const epsilon = 1 / 60;
+      const joinKeys = (arr1, arr2, key) => {
+        const combined = []
+          .concat(Array.isArray(arr1) ? arr1 : [])
+          .concat(Array.isArray(arr2) ? arr2 : []);
+        combined.sort((a, b) => (a.time || 0) - (b.time || 0));
+        const out = [];
+        for (const k of combined) {
+          if (!out.length || Math.abs((out[out.length - 1].time || 0) - (k.time || 0)) > epsilon) out.push(k);
+          else out[out.length - 1] = k;
+        }
+        return out;
+      };
+      const aKeys = keep.keys || (keep.keys = { position: [], zoom: [], rotation: [], opacity: [] });
+      const bKeys = drop.keys || { position: [], zoom: [], rotation: [], opacity: [] };
+      aKeys.position = joinKeys(aKeys.position, bKeys.position, 'position');
+      aKeys.zoom = joinKeys(aKeys.zoom, bKeys.zoom, 'zoom');
+      aKeys.rotation = joinKeys(aKeys.rotation, bKeys.rotation, 'rotation');
+      aKeys.opacity = joinKeys(aKeys.opacity, bKeys.opacity, 'opacity');
+      // Reassign any bones attached to drop to point at keep
+      try {
+        for (let i = 0; i < cutoutBones.length; i++) {
+          const bbone = cutoutBones[i];
+          if (bbone && bbone.objectRef === drop) {
+            bbone.objectRef = keep;
+          }
+        }
+      } catch (_e) {}
+      // Remove drop object from clip
+      if (Array.isArray(clip.objects)) {
+        const idx = clip.objects.indexOf(drop);
+        if (idx >= 0) clip.objects.splice(idx, 1);
+      }
+      // Normalize to an Image element asynchronously
+      try {
+        const newImg = new Image();
+        newImg.onload = () => {
+          keep.img = newImg;
+          renderCutoutPreviewForTime();
+        };
+        newImg.src = dataUrl;
+      } catch (_e) {}
+      // Update selection to merged object
+      cutoutActiveObject = keep;
+      cutoutSelectedObject = keep;
+      cutoutPropertyKeys = keep.keys || (keep.keys = { position: [], zoom: [], rotation: [], opacity: [] });
+      if (typeof cutoutBeginSelectionOverlay === 'function') cutoutBeginSelectionOverlay();
+      if (typeof renderCutoutObjectsList === 'function') renderCutoutObjectsList();
+      drawCutoutTimeline && drawCutoutTimeline();
+      updateRowKeyActiveStates && updateRowKeyActiveStates();
+      saveState && saveState();
     }
     
     function addCutoutLayer() {
@@ -8374,6 +8521,54 @@
       // If a transition is selected, let the transitions handler delete it, and skip clip deletion
       try {
         if (typeof selectedCutoutTransitionId === 'string' && selectedCutoutTransitionId) {
+          return;
+        }
+      } catch (_e) {}
+      // If timeline property keys are selected or exist at current time, delete ONLY keys (not objects)
+      try {
+        const epsilon = 1 / 60;
+        const tNow = Math.max(0, Math.min(cutoutDuration, cutoutCurrentTime || 0));
+        const deleteSelectedKeyGroup = () => {
+          if (!dragPropKey || !Array.isArray(dragPropKey.group) || dragPropKey.group.length === 0) return false;
+          let removed = false;
+          const byRefRemove = (arr, ref) => {
+            if (!Array.isArray(arr) || !ref) return false;
+            const idx = arr.indexOf(ref);
+            if (idx >= 0) { arr.splice(idx, 1); return true; }
+            return false;
+          };
+          for (const entry of dragPropKey.group) {
+            if (!entry || !entry.prop || !entry.keyRef) continue;
+            const arr = cutoutPropertyKeys && cutoutPropertyKeys[entry.prop];
+            if (byRefRemove(arr, entry.keyRef)) removed = true;
+          }
+          if (removed) {
+            drawCutoutTimeline(); updateRowKeyActiveStates(); applyCutoutKeyframedTransformsAtTime(); saveState();
+          }
+          // Clear selection context
+          dragPropKey.group = [];
+          isDraggingPropKey = false;
+          return removed;
+        };
+        const deleteKeysAtNow = () => {
+          if (!cutoutPropertyKeys) return false;
+          let removed = false;
+          ['position','zoom','rotation','opacity'].forEach((p) => {
+            const arr = Array.isArray(cutoutPropertyKeys[p]) ? cutoutPropertyKeys[p] : null;
+            if (!arr || !arr.length) return;
+            for (let i = arr.length - 1; i >= 0; i--) {
+              if (Math.abs(arr[i].time - tNow) <= epsilon) { arr.splice(i, 1); removed = true; }
+            }
+          });
+          if (removed) {
+            drawCutoutTimeline(); updateRowKeyActiveStates(); applyCutoutKeyframedTransformsAtTime(); saveState();
+          }
+          return removed;
+        };
+        // Priority: if there is a selected key group, delete it; else delete keys at current time
+        const removedKeys = deleteSelectedKeyGroup() || deleteKeysAtNow();
+        if (removedKeys) {
+          e.preventDefault(); e.stopPropagation();
           return;
         }
       } catch (_e) {}
