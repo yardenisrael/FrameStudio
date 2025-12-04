@@ -1729,6 +1729,8 @@
         }
         // Persist a lightweight flag so UI stays unlocked even if third-party libs fail on reload
         try { localStorage.setItem(PRO_UNLOCK_FLAG_KEY, '1'); } catch (_e) {}
+        // Also ensure pro cookie is set for fast unlock on page reload (same as heat haze and animation bones)
+        try { setCookie(PRO_COOKIE_KEY, '1', 365); } catch (_e) {}
       }
 
       (function createGoogleSignInHelper() {
@@ -2839,15 +2841,22 @@
     // Cut Out Bones tool state
     let cutoutBoneLassoPoints = [];
     let cutoutIsBoneLassoActive = false;
-    let cutoutBones = []; // {clipIndex, objectRef, startX, startY, endX, endY, ...}
+    let cutoutBones = []; // {clipIndex, objectRef, startX, startY, endX, endY, pinnedLocalX, pinnedLocalY, ...}
     // Require explicit arming to draw new bones lassos; allows moving bones without accidental new lasso
     let cutoutBonesDrawArmed = false;
+    // Storage for original pivot before bone mode (per-object, keyed by object id)
+    let preBonePivotStorage = {}; // { [objectId]: { pivotLocalX, pivotLocalY } }
     let cutoutBonesOverlayCanvas = null;
     let cutoutBonesOverlayCtx = null;
     let cutoutIsDraggingBoneHandle = false;
-    let cutoutBoneDrag = null; // {boneIndex, handle: 'start'|'end'}
+    let cutoutBoneDrag = null; // {boneIndex, handle: 'start'|'end'|'rotation'}
+    // State for bone rotation via the dedicated rotation handle
+    let cutoutIsRotatingBone = false;
+    let cutoutBoneRotationData = null; // {boneIndex, startAngle, initialObjRotation, initialBoneAngle, initialParentRotation, initialParentBoneStartX/Y, initialParentBoneEndX/Y}
     // Throttle Cut Out bones overlay redraws to once per animation frame
     let cutoutBonesOverlayRafScheduled = false;
+    // State for dragging objects in bones mode (when not on a bone node)
+    let cutoutBonesModeObjDrag = null; // { boneIndex, offsetX, offsetY }
     // Selected Cut Out bone for delete operations
     let cutoutSelectedBoneIndex = -1;
     let cutoutStartTimeAtPlay = 0;
@@ -3488,6 +3497,7 @@
       }
       // Ensure wheel-zoom baseline is 1.0 each time we enter cutout mode
       cutoutZoomLevel = 1;
+      cutoutZoomOriginPoint = null; // Reset point-accurate zoom origin
       cutoutPanX = 0;
       cutoutPanY = 0;
       applyCutoutZoomTransforms();
@@ -4227,6 +4237,7 @@
     let cutoutIsDraggingObj = false;
     let cutoutIsRotatingObj = false;
     let cutoutIsResizingObj = false;
+    let cutoutIsDraggingPivot = false;
     let cutoutResizeCorner = '';
     let cutoutResizeStartX = 0, cutoutResizeStartY = 0, cutoutResizeStartScale = 1;
     let cutoutResizeStartWidth = 0, cutoutResizeStartHeight = 0;
@@ -4254,6 +4265,9 @@
     let cutoutResizeStartMouseDist = 1;
     let cutoutResizeBaseW = 0, cutoutResizeBaseH = 0;
     let cutoutResizeObjScale = 1;
+    // Track pivot ratio at resize start to scale proportionally
+    let cutoutResizeStartPivotRatioX = 0.5, cutoutResizeStartPivotRatioY = 0.5;
+    let cutoutResizeHasPivot = false;
     // Dragging Zoom value fields (X or Y adjusts both simultaneously)
     let isDraggingZoom = false;
     let zoomDragStartMouseX = 0;
@@ -4937,6 +4951,10 @@
           obj.drawW = cutoutSelectedObject.drawW;
           obj.drawH = cutoutSelectedObject.drawH;
           if (cutoutSelectedObject.isImage) obj.isImage = true;
+          // Preserve pivot and handle distance
+          if (typeof cutoutSelectedObject.pivotLocalX === 'number') obj.pivotLocalX = cutoutSelectedObject.pivotLocalX;
+          if (typeof cutoutSelectedObject.pivotLocalY === 'number') obj.pivotLocalY = cutoutSelectedObject.pivotLocalY;
+          if (typeof cutoutSelectedObject.rotationHandleDistance === 'number') obj.rotationHandleDistance = cutoutSelectedObject.rotationHandleDistance;
           // Merge any pending keys (if present) into object's keys
           if (cutoutPendingSelection && cutoutPendingKeys && obj.keys) {
             const mergeArr = (dst, src, key) => {
@@ -4980,6 +4998,9 @@
             drawW: cutoutSelectedObject.drawW,
             drawH: cutoutSelectedObject.drawH,
             isImage: !!cutoutSelectedObject.isImage,
+            pivotLocalX: (typeof cutoutSelectedObject.pivotLocalX === 'number') ? cutoutSelectedObject.pivotLocalX : undefined,
+            pivotLocalY: (typeof cutoutSelectedObject.pivotLocalY === 'number') ? cutoutSelectedObject.pivotLocalY : undefined,
+            rotationHandleDistance: (typeof cutoutSelectedObject.rotationHandleDistance === 'number') ? cutoutSelectedObject.rotationHandleDistance : undefined,
             keys: (cutoutPendingKeys && cutoutPendingSelection) ? cutoutPendingKeys : { position: [], zoom: [], rotation: [], opacity: [] }
           };
           clip.objects.push(newObj);
@@ -5872,13 +5893,20 @@
         const handle0 = getResizeHandleAtPoint(cutoutSelectedObject, x, y);
         if (handle0 === 'rotation') {
           const geometry = calculateSelectionHandleGeometry(cutoutSelectedObject);
-          const center = geometry.center;
-          rotationCenterX = center.x;
-          rotationCenterY = center.y;
+          const pivot = geometry.pivot || geometry.center;
+          rotationCenterX = pivot.x;
+          rotationCenterY = pivot.y;
           rotationStartAngle = Math.atan2(y - rotationCenterY, x - rotationCenterX);
           rotationCurrentAngle = cutoutSelectedObject.rotation || 0;
           cutoutIsRotatingObj = true;
           activeTransformHandle = 'rotation';
+          return;
+        }
+        if (handle0 === 'pivot') {
+          cutoutIsDraggingPivot = true;
+          activeTransformHandle = 'pivot';
+          // Ensure overlay updates immediately
+          try { cutoutRenderSelectionOverlay(); } catch (_e) {}
           return;
         }
         if (handle0) {
@@ -5897,8 +5925,19 @@
             : ((cutoutSelectedObject && cutoutSelectedObject.img && (cutoutSelectedObject.img.naturalHeight || cutoutSelectedObject.img.height || cutoutSelectedObject.img.videoHeight)) || 0);
           cutoutResizeBaseW = baseW;
           cutoutResizeBaseH = baseH;
-          cutoutResizeObjScale = cutoutSelectedObject.scale || 1;
-          cutoutResizeStartMouseDist = Math.max(1, Math.hypot(x - cutoutResizeStartCenterX, y - cutoutResizeStartCenterY));
+        cutoutResizeObjScale = cutoutSelectedObject.scale || 1;
+        cutoutResizeStartMouseDist = Math.max(1, Math.hypot(x - cutoutResizeStartCenterX, y - cutoutResizeStartCenterY));
+          // Capture pivot ratio for proportional scaling
+          const initW = cutoutResizeBaseW * cutoutResizeObjScale * cutoutResizeStartScaleX;
+          const initH = cutoutResizeBaseH * cutoutResizeObjScale * cutoutResizeStartScaleY;
+          cutoutResizeHasPivot = (typeof cutoutSelectedObject.pivotLocalX === 'number');
+          if (cutoutResizeHasPivot && initW > 0 && initH > 0) {
+            cutoutResizeStartPivotRatioX = cutoutSelectedObject.pivotLocalX / initW;
+            cutoutResizeStartPivotRatioY = cutoutSelectedObject.pivotLocalY / initH;
+          } else {
+            cutoutResizeStartPivotRatioX = 0.5;
+            cutoutResizeStartPivotRatioY = 0.5;
+          }
           activeTransformHandle = handle0;
           return;
         }
@@ -6084,9 +6123,9 @@
       if (handle === 'rotation') {
         // begin rotation
         const geometry = calculateSelectionHandleGeometry(cutoutSelectedObject);
-        const center = geometry.center;
-        rotationCenterX = center.x;
-        rotationCenterY = center.y;
+        const pivot = geometry.pivot || geometry.center;
+        rotationCenterX = pivot.x;
+        rotationCenterY = pivot.y;
         rotationStartAngle = Math.atan2(y - rotationCenterY, x - rotationCenterX);
         rotationCurrentAngle = cutoutSelectedObject.rotation || 0;
         cutoutIsRotatingObj = true;
@@ -6156,6 +6195,17 @@
         cutoutResizeObjScale = cutoutSelectedObject.scale || 1;
         // Initial distance from center to cursor
         cutoutResizeStartMouseDist = Math.max(1, Math.hypot(x - cutoutResizeStartCenterX, y - cutoutResizeStartCenterY));
+        // Capture pivot ratio for proportional scaling
+        const initW2 = cutoutResizeBaseW * cutoutResizeObjScale * cutoutResizeStartScaleX;
+        const initH2 = cutoutResizeBaseH * cutoutResizeObjScale * cutoutResizeStartScaleY;
+        cutoutResizeHasPivot = (typeof cutoutSelectedObject.pivotLocalX === 'number');
+        if (cutoutResizeHasPivot && initW2 > 0 && initH2 > 0) {
+          cutoutResizeStartPivotRatioX = cutoutSelectedObject.pivotLocalX / initW2;
+          cutoutResizeStartPivotRatioY = cutoutSelectedObject.pivotLocalY / initH2;
+        } else {
+          cutoutResizeStartPivotRatioX = 0.5;
+          cutoutResizeStartPivotRatioY = 0.5;
+        }
         return;
       }
       // Default: move
@@ -6172,6 +6222,32 @@
       const rect = cutoutMoveOverlayCanvas.getBoundingClientRect();
       const x = (e.clientX - rect.left) * (cutoutCanvas.width / rect.width);
       const y = (e.clientY - rect.top) * (cutoutCanvas.height / rect.height);
+      if (cutoutIsDraggingPivot) {
+        const obj = cutoutSelectedObject;
+        const objScaleX = (obj && typeof obj.scaleX === 'number') ? obj.scaleX : 1;
+        const objScaleY = (obj && typeof obj.scaleY === 'number') ? obj.scaleY : 1;
+        const baseW = (obj && obj.drawW != null) ? obj.drawW : ((obj && obj.img && (obj.img.naturalWidth || obj.img.width || obj.img.videoWidth)) || 0);
+        const baseH = (obj && obj.drawH != null) ? obj.drawH : ((obj && obj.img && (obj.img.naturalHeight || obj.img.height || obj.img.videoHeight)) || 0);
+        const w = baseW * (obj.scale || 1) * objScaleX;
+        const h = baseH * (obj.scale || 1) * objScaleY;
+        const centerX = obj.x + w / 2;
+        const centerY = obj.y + h / 2;
+        const rot = obj.rotation || 0;
+        const dx = x - centerX;
+        const dy = y - centerY;
+        const localX = centerX + dx * Math.cos(-rot) - dy * Math.sin(-rot);
+        const localY = centerY + dx * Math.sin(-rot) + dy * Math.cos(-rot);
+        obj.pivotLocalX = Math.max(0, Math.min(w, localX - obj.x));
+        obj.pivotLocalY = Math.max(0, Math.min(h, localY - obj.y));
+        // update handle distance baseline so the rotation node follows the pivot
+        try {
+          const geom = calculateSelectionHandleGeometry(obj);
+          const baseLen = Math.hypot(geom.topMid.x - geom.pivot.x, geom.topMid.y - geom.pivot.y);
+          obj.rotationHandleDistance = baseLen + ROTATION_HANDLE_OFFSET;
+        } catch (_e) {}
+        try { cutoutRenderSelectionOverlay(); } catch (_e) {}
+        return;
+      }
       if (cutoutIsRotatingObj) {
         const currentAngle = Math.atan2(y - rotationCenterY, x - rotationCenterX);
         const angleDelta = currentAngle - rotationStartAngle;
@@ -6216,6 +6292,27 @@
               if (!cutoutPendingDragKeys) cutoutPendingDragKeys = {};
               cutoutPendingDragKeys.position = { time: cutoutCurrentTime, x: obj.x, y: obj.y };
             }
+          } else {
+            // Keep pivot fixed by adjusting position when rotating
+            const obj = cutoutSelectedObject;
+            const objScaleX = (obj && typeof obj.scaleX === 'number') ? obj.scaleX : 1;
+            const objScaleY = (obj && typeof obj.scaleY === 'number') ? obj.scaleY : 1;
+            const baseW = (obj && obj.drawW != null) ? obj.drawW : ((obj && obj.img && (obj.img.naturalWidth || obj.img.width || obj.img.videoWidth)) || 0);
+            const baseH = (obj && obj.drawH != null) ? obj.drawH : ((obj && obj.img && (obj.img.naturalHeight || obj.img.height || obj.img.videoHeight)) || 0);
+            const w = baseW * (obj.scale || 1) * objScaleX;
+            const h = baseH * (obj.scale || 1) * objScaleY;
+            const dpx = ((typeof obj.pivotLocalX === 'number') ? obj.pivotLocalX : (w / 2)) - (w / 2);
+            const dpy = ((typeof obj.pivotLocalY === 'number') ? obj.pivotLocalY : (h / 2)) - (h / 2);
+            const rot = obj.rotation || 0;
+            const cx = rotationCenterX - (dpx * Math.cos(rot) - dpy * Math.sin(rot));
+            const cy = rotationCenterY - (dpx * Math.sin(rot) + dpy * Math.cos(rot));
+            obj.x = cx - w / 2;
+            obj.y = cy - h / 2;
+            // Track position change for pivot-fixed rotation so it persists when recording
+            if (cutoutRecorderArmed) {
+              if (!cutoutPendingDragKeys) cutoutPendingDragKeys = {};
+              cutoutPendingDragKeys.position = { time: cutoutCurrentTime, x: obj.x, y: obj.y };
+            }
           }
         } catch (_e) {}
         cutoutRenderSelectionOverlay();
@@ -6229,15 +6326,25 @@
         return;
       }
       if (cutoutIsResizingObj) {
-        // Uniform scale based on distance change, keep center fixed
+        // Uniform scale based on distance change, keep geometric center fixed
         const currentDist = Math.max(1, Math.hypot(x - cutoutResizeStartCenterX, y - cutoutResizeStartCenterY));
         const startAvg = (cutoutResizeStartScaleX + cutoutResizeStartScaleY) / 2;
         const scaleFactor = currentDist / cutoutResizeStartMouseDist;
         const newScale = Math.max(0.1, Math.min(10.0, startAvg * scaleFactor));
-        cutoutSelectedObject.scaleX = newScale;
-        cutoutSelectedObject.scaleY = newScale;
+        
+        // Compute new dimensions
         const newW = cutoutResizeBaseW * cutoutResizeObjScale * newScale;
         const newH = cutoutResizeBaseH * cutoutResizeObjScale * newScale;
+        
+        // Scale pivotLocalX/Y proportionally to maintain relative pivot position
+        // This ensures the central anchor point doesn't shift during scaling
+        if (cutoutResizeHasPivot) {
+          cutoutSelectedObject.pivotLocalX = cutoutResizeStartPivotRatioX * newW;
+          cutoutSelectedObject.pivotLocalY = cutoutResizeStartPivotRatioY * newH;
+        }
+        
+        cutoutSelectedObject.scaleX = newScale;
+        cutoutSelectedObject.scaleY = newScale;
         cutoutSelectedObject.x = cutoutResizeStartCenterX - newW / 2;
         cutoutSelectedObject.y = cutoutResizeStartCenterY - newH / 2;
         cutoutRenderSelectionOverlay();
@@ -6307,6 +6414,7 @@
       cutoutIsDraggingObj = false;
       cutoutIsRotatingObj = false;
       cutoutIsResizingObj = false;
+      cutoutIsDraggingPivot = false;
       activeTransformHandle = '';
       cutoutRenderSelectionOverlay();
       renderCutoutPreviewForTime();
@@ -7387,7 +7495,19 @@
       return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
     }
     
-    // --- Quadrant-based zoom anchoring (Cut Out + Regular) ---
+    // --- Point-accurate zoom anchoring (Cut Out + Regular) ---
+    // Returns exact percentage position within container for point-accurate zoom
+    function getPointOrigin(rect, clientX, clientY) {
+      // Calculate exact mouse position as percentage within container
+      const relX = clientX - rect.left;
+      const relY = clientY - rect.top;
+      // Clamp to container bounds (0-100%)
+      const percentX = Math.max(0, Math.min(100, (relX / rect.width) * 100));
+      const percentY = Math.max(0, Math.min(100, (relY / rect.height) * 100));
+      return { x: percentX, y: percentY };
+    }
+    
+    // Legacy function kept for any remaining uses
     function getQuadrantFromPoint(rect, clientX, clientY) {
       // First detect central mini-rectangle
       const centerWRatio = 0.36; // ~36% of container width
@@ -7409,6 +7529,12 @@
       if (!top && left) return 'bl';
       return 'br';
     }
+    
+    // Convert point origin object to CSS string
+    function pointOriginToCss(origin) {
+      if (!origin || typeof origin !== 'object') return 'center center';
+      return `${origin.x}% ${origin.y}%`;
+    }
     function oppositeCorner(corner) {
       switch (corner) {
         case 'tl': return 'br';
@@ -7428,7 +7554,8 @@
         default: return 'center center';
       }
     }
-    let cutoutZoomAnchorCorner = null; // 'tl'|'tr'|'bl'|'br' or null
+    let cutoutZoomAnchorCorner = null; // 'tl'|'tr'|'bl'|'br' or null (legacy)
+    let cutoutZoomOriginPoint = null; // { x: %, y: % } for point-accurate zoom
     // Overlay: central zoom detection rectangle
     function ensureZoomCenterOverlay(container) {
       if (!container) return;
@@ -7463,9 +7590,9 @@
     
     function applyCutoutZoomTransforms() {
       if (!cutoutCanvas) return;
-      // Zoom around the anchored corner (quadrant-based), keep translation at zero
+      // Point-accurate zoom: use exact origin point, fallback to center
       const t = `scale(${cutoutZoomLevel})`;
-      const origin = anchorToCssOrigin(cutoutZoomAnchorCorner || 'center');
+      const origin = cutoutZoomOriginPoint ? pointOriginToCss(cutoutZoomOriginPoint) : 'center center';
       ensureZoomCenterOverlay(cutoutCanvas.parentElement);
       cutoutCanvas.style.transformOrigin = origin;
       cutoutCanvas.style.transform = t;
@@ -7657,17 +7784,35 @@
       const oldScale = cutoutZoomLevel;
       const newScale = Math.max(1.0, Math.min(3.0, cutoutZoomLevel + delta));
       if (newScale === oldScale) return;
-      // Locking behavior: only set anchor when at minimum zoom (1.0) and zooming in.
-      if (newScale > oldScale) {
+      
+      const container = cutoutCanvas ? cutoutCanvas.parentElement : null;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      
+      // Point-accurate zoom: always update origin to current mouse position for smooth zoom-to-point
+      // When zooming in from 1.0, set the initial origin
+      // When already zoomed, interpolate towards new point for smooth re-targeting
+      if (newScale > 1.0) {
+        const newPoint = getPointOrigin(rect, e.clientX, e.clientY);
         if (oldScale <= 1.0 + 1e-9) {
-          const container = cutoutCanvas ? cutoutCanvas.parentElement : null;
-          if (container) {
-            const rect = container.getBoundingClientRect();
-            const q = getQuadrantFromPoint(rect, e.clientX, e.clientY);
-            cutoutZoomAnchorCorner = q || 'center';
-          }
+          // Starting fresh zoom - use exact mouse position
+          cutoutZoomOriginPoint = newPoint;
+        } else if (cutoutZoomOriginPoint) {
+          // Already zoomed - smoothly interpolate origin towards new point
+          // The closer to min zoom, the more we shift towards new point
+          const t = Math.min(1, (3.0 - oldScale) / 2.0) * 0.3; // Subtle shift
+          cutoutZoomOriginPoint = {
+            x: cutoutZoomOriginPoint.x + (newPoint.x - cutoutZoomOriginPoint.x) * t,
+            y: cutoutZoomOriginPoint.y + (newPoint.y - cutoutZoomOriginPoint.y) * t
+          };
+        } else {
+          cutoutZoomOriginPoint = newPoint;
         }
+      } else {
+        // Zoomed back to 1.0 - reset origin for next zoom
+        cutoutZoomOriginPoint = null;
       }
+      
       // Keep pan at zero (no drift)
       cutoutPanX = 0;
       cutoutPanY = 0;
@@ -8012,9 +8157,52 @@
         if (handle) {
           isCutoutDrawing = true;
           try { saveState(); } catch (_e) {}
+          cutoutSelectedBoneIndex = handle.boneIndex;
+          
+          // Handle rotation via the dedicated rotation handle
+          if (handle.handle === 'rotation') {
+            const b = cutoutBones[handle.boneIndex];
+            if (b && b.objectRef) {
+              cutoutIsRotatingBone = true;
+              cutoutBoneDrag = handle;
+              cutoutIsDraggingBoneHandle = true;
+              // Calculate initial angle from bone start to mouse
+              const startAngle = Math.atan2(y - b.startY, x - b.startX);
+              // Store initial state for connected parent bone if this bone's END is connected to a START
+              let parentInitialData = null;
+              if (b.attachedAt === 'end' && b.parentAttach === 'start' && b.parentBoneIndex != null) {
+                const parentBone = cutoutBones[b.parentBoneIndex];
+                if (parentBone && parentBone.objectRef) {
+                  parentInitialData = {
+                    rotation: parentBone.objectRef.rotation || 0,
+                    x: parentBone.objectRef.x,
+                    y: parentBone.objectRef.y,
+                    boneStartX: parentBone.startX,
+                    boneStartY: parentBone.startY,
+                    boneEndX: parentBone.endX,
+                    boneEndY: parentBone.endY
+                  };
+                }
+              }
+              cutoutBoneRotationData = {
+                boneIndex: handle.boneIndex,
+                startAngle: startAngle,
+                initialObjRotation: b.objectRef.rotation || 0,
+                // Store bone's initial angle for rotating the bone itself too
+                initialBoneAngle: Math.atan2(b.endY - b.startY, b.endX - b.startX),
+                // Store initial end position for restoring connection
+                initialEndX: b.endX,
+                initialEndY: b.endY,
+                // Store parent's initial state for tree branch rotation
+                parentInitial: parentInitialData
+              };
+            }
+            ensureCutoutBonesOverlay();
+            return;
+          }
+          
           cutoutBoneDrag = handle;
           cutoutIsDraggingBoneHandle = true;
-          cutoutSelectedBoneIndex = handle.boneIndex;
           // If rotating from end handle, capture pinned local offset so start node stays pinned during rotation
           try {
             if (handle.handle === 'end') {
@@ -8071,6 +8259,38 @@
           if (typeof applyCutoutZoomTransforms === 'function') applyCutoutZoomTransforms();
           return;
         }
+        
+        // Not armed and not on a bone handle: check if clicking on an object to drag it
+        const activeClipForDrag = getActiveCutoutClipIndex();
+        if (activeClipForDrag >= 0) {
+          // Find if point is inside any object that has a bone attached
+          for (let bi = 0; bi < cutoutBones.length; bi++) {
+            const bone = cutoutBones[bi];
+            if (!bone || bone.clipIndex !== activeClipForDrag || !bone.objectRef) continue;
+            const obj = bone.objectRef;
+            if (!obj || !obj.img) continue;
+            const baseW = (obj.drawW != null) ? obj.drawW : ((obj.img.naturalWidth || obj.img.width) || 0);
+            const baseH = (obj.drawH != null) ? obj.drawH : ((obj.img.naturalHeight || obj.img.height) || 0);
+            const effScaleX = (typeof obj.scaleX === 'number' ? obj.scaleX : 1);
+            const effScaleY = (typeof obj.scaleY === 'number' ? obj.scaleY : 1);
+            const objW = baseW * (obj.scale || 1) * effScaleX;
+            const objH = baseH * (obj.scale || 1) * effScaleY;
+            // Simple AABB hit test (ignoring rotation for click detection)
+            if (x >= obj.x && x <= obj.x + objW && y >= obj.y && y <= obj.y + objH) {
+              // Start dragging this object
+              isCutoutDrawing = true;
+              try { saveState(); } catch (_e) {}
+              cutoutBonesModeObjDrag = {
+                boneIndex: bi,
+                offsetX: x - obj.x,
+                offsetY: y - obj.y
+              };
+              ensureCutoutBonesOverlay();
+              return;
+            }
+          }
+        }
+        
         // Not armed: keep bones visible/movable, but do not start a new lasso
         ensureCutoutBonesOverlay();
         drawCutoutBonesOverlay();
@@ -8179,6 +8399,152 @@
       const tctx = target ? target.ctx : cutoutCtx;
       // Bones: handle dragging or lasso drawing
       if (currentTool === 'bones' && cutoutIsDraggingBoneHandle && cutoutBoneDrag) {
+        // Handle rotation via the dedicated rotation handle
+        if (cutoutIsRotatingBone && cutoutBoneRotationData) {
+          const b = cutoutBones[cutoutBoneRotationData.boneIndex];
+          if (b && b.objectRef) {
+            const obj = b.objectRef;
+            // Calculate current angle from bone start to mouse
+            const currentAngle = Math.atan2(y - b.startY, x - b.startX);
+            const angleDelta = currentAngle - cutoutBoneRotationData.startAngle;
+            
+            // Update object rotation (bone start is the anchor point)
+            obj.rotation = cutoutBoneRotationData.initialObjRotation + angleDelta;
+            
+            // Rotate the bone end around bone start
+            const boneLength = b.restLength || Math.hypot(b.endX - b.startX, b.endY - b.startY);
+            const newBoneAngle = cutoutBoneRotationData.initialBoneAngle + angleDelta;
+            b.endX = b.startX + Math.cos(newBoneAngle) * boneLength;
+            b.endY = b.startY + Math.sin(newBoneAngle) * boneLength;
+            
+            // Keep the object positioned so bone start stays at the same world position
+            // Calculate where bone start would be on the object at its current rotation
+            const baseW = (obj && obj.drawW != null) ? obj.drawW : ((obj && obj.img && (obj.img.naturalWidth || obj.img.width || obj.img.videoWidth)) || 0);
+            const baseH = (obj && obj.drawH != null) ? obj.drawH : ((obj && obj.img && (obj.img.naturalHeight || obj.img.height || obj.img.videoHeight)) || 0);
+            const effScaleX = (typeof obj.scaleX === 'number' ? obj.scaleX : 1);
+            const effScaleY = (typeof obj.scaleY === 'number' ? obj.scaleY : 1);
+            const w = baseW * (obj.scale || 1) * effScaleX;
+            const h = baseH * (obj.scale || 1) * effScaleY;
+            
+            // Use bone's pinnedLocal if available, otherwise compute from center
+            let px = (typeof b.pinnedLocalX === 'number') ? b.pinnedLocalX : 0;
+            let py = (typeof b.pinnedLocalY === 'number') ? b.pinnedLocalY : 0;
+            if (typeof b.pinnedLocalX !== 'number') {
+              // Initialize pinnedLocal from current bone position relative to object center
+              const objCenterX = obj.x + w / 2;
+              const objCenterY = obj.y + h / 2;
+              const dx0 = b.startX - objCenterX;
+              const dy0 = b.startY - objCenterY;
+              const rot0 = cutoutBoneRotationData.initialObjRotation;
+              const cos0 = Math.cos(rot0), sin0 = Math.sin(rot0);
+              px = b.pinnedLocalX = dx0 * cos0 + dy0 * sin0;
+              py = b.pinnedLocalY = -dx0 * sin0 + dy0 * cos0;
+            }
+            
+            // Compute new object position to keep bone start pinned at world position
+            const rot = obj.rotation;
+            const cos = Math.cos(rot), sin = Math.sin(rot);
+            const rx = px * cos - py * sin;
+            const ry = px * sin + py * cos;
+            const centerX = b.startX - rx;
+            const centerY = b.startY - ry;
+            obj.x = centerX - w / 2;
+            obj.y = centerY - h / 2;
+            
+            // Clamp bone endpoints to canvas
+            try {
+              const cw = cutoutCanvas ? cutoutCanvas.width : 0;
+              const ch = cutoutCanvas ? cutoutCanvas.height : 0;
+              if (cw && ch) {
+                b.endX = Math.max(0, Math.min(cw, b.endX));
+                b.endY = Math.max(0, Math.min(ch, b.endY));
+              }
+            } catch (_e) {}
+            
+            // If this bone's END is connected to another bone's START,
+            // then rotating this bone's START should also rotate the connected parent bone and its object
+            // The START of the bone whose END made the connection is the anchor for the tree branch
+            const parentInit = cutoutBoneRotationData.parentInitial;
+            if (parentInit && b.attachedAt === 'end' && b.parentAttach === 'start' && b.parentBoneIndex != null) {
+              const activeClipRot = getActiveCutoutClipIndex();
+              const parentBone = cutoutBones[b.parentBoneIndex];
+              if (parentBone && parentBone.clipIndex === activeClipRot && parentBone.objectRef) {
+                const parentObj = parentBone.objectRef;
+                const pivotX = b.startX;
+                const pivotY = b.startY;
+                const cosA = Math.cos(angleDelta), sinA = Math.sin(angleDelta);
+                
+                // Rotate parent bone endpoints from INITIAL positions around this bone's START (the anchor)
+                const dxPS = parentInit.boneStartX - pivotX;
+                const dyPS = parentInit.boneStartY - pivotY;
+                parentBone.startX = pivotX + dxPS * cosA - dyPS * sinA;
+                parentBone.startY = pivotY + dxPS * sinA + dyPS * cosA;
+                
+                const dxPE = parentInit.boneEndX - pivotX;
+                const dyPE = parentInit.boneEndY - pivotY;
+                parentBone.endX = pivotX + dxPE * cosA - dyPE * sinA;
+                parentBone.endY = pivotY + dxPE * sinA + dyPE * cosA;
+                
+                // Keep the connection: this bone's END stays at parent's START
+                b.endX = parentBone.startX;
+                b.endY = parentBone.startY;
+                
+                // Rotate parent object around the pivot (this bone's START) from INITIAL position
+                const baseWP = (parentObj.drawW != null) ? parentObj.drawW : ((parentObj.img && (parentObj.img.naturalWidth || parentObj.img.width)) || 0);
+                const baseHP = (parentObj.drawH != null) ? parentObj.drawH : ((parentObj.img && (parentObj.img.naturalHeight || parentObj.img.height)) || 0);
+                const effScaleXP = (typeof parentObj.scaleX === 'number' ? parentObj.scaleX : 1);
+                const effScaleYP = (typeof parentObj.scaleY === 'number' ? parentObj.scaleY : 1);
+                const wP = baseWP * (parentObj.scale || 1) * effScaleXP;
+                const hP = baseHP * (parentObj.scale || 1) * effScaleYP;
+                
+                // Use initial center position
+                const initialParentCenterX = parentInit.x + wP / 2;
+                const initialParentCenterY = parentInit.y + hP / 2;
+                
+                // Rotate initial parent center around pivot
+                const dxPC = initialParentCenterX - pivotX;
+                const dyPC = initialParentCenterY - pivotY;
+                const newParentCenterX = pivotX + dxPC * cosA - dyPC * sinA;
+                const newParentCenterY = pivotY + dxPC * sinA + dyPC * cosA;
+                parentObj.x = newParentCenterX - wP / 2;
+                parentObj.y = newParentCenterY - hP / 2;
+                
+                // Set parent's rotation absolutely from initial + delta (not incrementally)
+                parentObj.rotation = parentInit.rotation + angleDelta;
+                
+                // Update parent bone's local coordinates
+                const parentObjCenterX2 = parentObj.x + wP / 2;
+                const parentObjCenterY2 = parentObj.y + hP / 2;
+                const rotP = parentObj.rotation || 0;
+                const cosP = Math.cos(rotP), sinP = Math.sin(rotP);
+                const dxPSL = parentBone.startX - parentObjCenterX2;
+                const dyPSL = parentBone.startY - parentObjCenterY2;
+                parentBone.pinnedLocalX = dxPSL * cosP + dyPSL * sinP;
+                parentBone.pinnedLocalY = -dxPSL * sinP + dyPSL * cosP;
+                const dxPEL = parentBone.endX - parentObjCenterX2;
+                const dyPEL = parentBone.endY - parentObjCenterY2;
+                parentBone.endLocalX = dxPEL * cosP + dyPEL * sinP;
+                parentBone.endLocalY = -dxPEL * sinP + dyPEL * cosP;
+                
+                // Update this bone's end local coordinates
+                const objCenterX2 = obj.x + w / 2;
+                const objCenterY2 = obj.y + h / 2;
+                const rotB = obj.rotation || 0;
+                const cosB = Math.cos(rotB), sinB = Math.sin(rotB);
+                const dxBE = b.endX - objCenterX2;
+                const dyBE = b.endY - objCenterY2;
+                b.endLocalX = dxBE * cosB + dyBE * sinB;
+                b.endLocalY = -dxBE * sinB + dyBE * cosB;
+              }
+            }
+          }
+          scheduleDrawCutoutBonesOverlay();
+          scheduleCutoutPreviewForTime();
+          lastCutoutX = x; lastCutoutY = y;
+          cutoutCtx.restore();
+          return;
+        }
+        
         const b = cutoutBones[cutoutBoneDrag.boneIndex];
         if (b) {
           const isHandleAttachedToParent = (b.attachedAt === cutoutBoneDrag.handle);
@@ -8192,7 +8558,7 @@
           const isJointDrag = isHandleAttachedToParent || hasChildrenOnHandle;
           if (isJointDrag) {
             if (cutoutBoneDrag.handle === 'start') {
-          // Translate entire connected component within active clip (no rotation) — do not move attached objects
+              // Translate entire connected component within active clip (no rotation) — do not move attached objects
               const activeClipIdx = getActiveCutoutClipIndex();
               const queue = [cutoutBoneDrag.boneIndex];
               const visited = new Set();
@@ -8204,17 +8570,36 @@
                 if (!n || n.clipIndex !== activeClipIdx) continue;
                 n.startX += (x - lastCutoutX); n.startY += (y - lastCutoutY);
                 n.endX += (x - lastCutoutX); n.endY += (y - lastCutoutY);
-                // Clamp both endpoints to canvas bounds
-                try {
-                  const cw = cutoutCanvas ? cutoutCanvas.width : 0;
-                  const ch = cutoutCanvas ? cutoutCanvas.height : 0;
-                  if (cw && ch) {
-                    n.startX = Math.max(0, Math.min(cw, n.startX));
-                    n.startY = Math.max(0, Math.min(ch, n.startY));
-                    n.endX = Math.max(0, Math.min(cw, n.endX));
-                    n.endY = Math.max(0, Math.min(ch, n.endY));
-                  }
-                } catch (_e) {}
+                
+                // Clamp both endpoints to object bounds
+                const obj = n.objectRef;
+                if (obj) {
+                  const baseW = (obj.drawW != null) ? obj.drawW : ((obj.img && (obj.img.naturalWidth || obj.img.width)) || 0);
+                  const baseH = (obj.drawH != null) ? obj.drawH : ((obj.img && (obj.img.naturalHeight || obj.img.height)) || 0);
+                  const effScaleX = (typeof obj.scaleX === 'number' ? obj.scaleX : 1);
+                  const effScaleY = (typeof obj.scaleY === 'number' ? obj.scaleY : 1);
+                  const objW = baseW * (obj.scale || 1) * effScaleX;
+                  const objH = baseH * (obj.scale || 1) * effScaleY;
+                  const objLeft = obj.x;
+                  const objTop = obj.y;
+                  const objRight = objLeft + objW;
+                  const objBottom = objTop + objH;
+                  n.startX = Math.max(objLeft, Math.min(objRight, n.startX));
+                  n.startY = Math.max(objTop, Math.min(objBottom, n.startY));
+                  n.endX = Math.max(objLeft, Math.min(objRight, n.endX));
+                  n.endY = Math.max(objTop, Math.min(objBottom, n.endY));
+                  
+                  // Update pinned local position (bone anchor in local space)
+                  const objCenterX = objLeft + objW / 2;
+                  const objCenterY = objTop + objH / 2;
+                  const rot = obj.rotation || 0;
+                  const anchorDx = n.startX - objCenterX;
+                  const anchorDy = n.startY - objCenterY;
+                  const cos = Math.cos(rot), sin = Math.sin(rot);
+                  n.pinnedLocalX = anchorDx * cos + anchorDy * sin;
+                  n.pinnedLocalY = -anchorDx * sin + anchorDy * cos;
+                }
+                
                 // enqueue parent and children
                 if (n.parentBoneIndex != null) queue.push(n.parentBoneIndex);
                 for (let i = 0; i < cutoutBones.length; i++) {
@@ -8229,18 +8614,38 @@
             }
           } else {
             if (cutoutBoneDrag.handle === 'start') {
-          // Move only the start endpoint (no rotation); do not move the object or end
+              // Move start endpoint - acts as anchor point, so object moves with it
               const dx = x - lastCutoutX, dy = y - lastCutoutY;
               b.startX += dx; b.startY += dy;
-              // Clamp start to canvas bounds
-              try {
-                const cw = cutoutCanvas ? cutoutCanvas.width : 0;
-                const ch = cutoutCanvas ? cutoutCanvas.height : 0;
-                if (cw && ch) {
-                  b.startX = Math.max(0, Math.min(cw, b.startX));
-                  b.startY = Math.max(0, Math.min(ch, b.startY));
-                }
-              } catch (_e) {}
+              
+              // Get object bounds for constraining
+              const obj = b.objectRef;
+              if (obj) {
+                const baseW = (obj.drawW != null) ? obj.drawW : ((obj.img && (obj.img.naturalWidth || obj.img.width)) || 0);
+                const baseH = (obj.drawH != null) ? obj.drawH : ((obj.img && (obj.img.naturalHeight || obj.img.height)) || 0);
+                const effScaleX = (typeof obj.scaleX === 'number' ? obj.scaleX : 1);
+                const effScaleY = (typeof obj.scaleY === 'number' ? obj.scaleY : 1);
+                const objW = baseW * (obj.scale || 1) * effScaleX;
+                const objH = baseH * (obj.scale || 1) * effScaleY;
+                
+                // Clamp start to object bounds
+                const objLeft = obj.x;
+                const objTop = obj.y;
+                const objRight = objLeft + objW;
+                const objBottom = objTop + objH;
+                b.startX = Math.max(objLeft, Math.min(objRight, b.startX));
+                b.startY = Math.max(objTop, Math.min(objBottom, b.startY));
+                
+                // Update pinned local position (bone anchor in local space)
+                const objCenterX = objLeft + objW / 2;
+                const objCenterY = objTop + objH / 2;
+                const rot = obj.rotation || 0;
+                const anchorDx = b.startX - objCenterX;
+                const anchorDy = b.startY - objCenterY;
+                const cos = Math.cos(rot), sin = Math.sin(rot);
+                b.pinnedLocalX = anchorDx * cos + anchorDy * sin;
+                b.pinnedLocalY = -anchorDx * sin + anchorDy * cos;
+              }
             } else {
               // End-handle drag: axial vs perpendicular behavior
               const mvx = x - lastCutoutX, mvy = y - lastCutoutY;
@@ -8250,20 +8655,31 @@
               const ux = ax / alen, uy = ay / alen;
               const ds = mvx * ux + mvy * uy;      // along axis
               const dp = -mvx * uy + mvy * ux;     // perpendicular
+              
+              // Get object bounds for constraining
+              const obj = b.objectRef;
+              let objLeft = 0, objTop = 0, objRight = cutoutCanvas ? cutoutCanvas.width : 0, objBottom = cutoutCanvas ? cutoutCanvas.height : 0;
+              if (obj) {
+                const baseW = (obj.drawW != null) ? obj.drawW : ((obj.img && (obj.img.naturalWidth || obj.img.width)) || 0);
+                const baseH = (obj.drawH != null) ? obj.drawH : ((obj.img && (obj.img.naturalHeight || obj.img.height)) || 0);
+                const effScaleX = (typeof obj.scaleX === 'number' ? obj.scaleX : 1);
+                const effScaleY = (typeof obj.scaleY === 'number' ? obj.scaleY : 1);
+                const objW = baseW * (obj.scale || 1) * effScaleX;
+                const objH = baseH * (obj.scale || 1) * effScaleY;
+                objLeft = obj.x;
+                objTop = obj.y;
+                objRight = objLeft + objW;
+                objBottom = objTop + objH;
+              }
+              
               if (Math.abs(ds) >= Math.abs(dp)) {
                 // Adjust length along axis (no rotation, do not move object)
                 b.endX += ux * ds;
                 b.endY += uy * ds;
                 b.restLength = Math.hypot(b.endX - b.startX, b.endY - b.startY);
-                // Clamp end to canvas
-                try {
-                  const cw = cutoutCanvas ? cutoutCanvas.width : 0;
-                  const ch = cutoutCanvas ? cutoutCanvas.height : 0;
-                  if (cw && ch) {
-                    b.endX = Math.max(0, Math.min(cw, b.endX));
-                    b.endY = Math.max(0, Math.min(ch, b.endY));
-                  }
-                } catch (_e) {}
+                // Clamp end to object bounds
+                b.endX = Math.max(objLeft, Math.min(objRight, b.endX));
+                b.endY = Math.max(objTop, Math.min(objBottom, b.endY));
               } else {
                 // Rotate with fixed length around start
                 const L = Math.max(0.0001, b.restLength || Math.hypot(b.endX - b.startX, b.endY - b.startY));
@@ -8271,19 +8687,56 @@
                 const len = Math.hypot(vx, vy) || 1;
                 b.endX = b.startX + (vx / len) * L;
                 b.endY = b.startY + (vy / len) * L;
-                // Clamp end to canvas
-                try {
-                  const cw = cutoutCanvas ? cutoutCanvas.width : 0;
-                  const ch = cutoutCanvas ? cutoutCanvas.height : 0;
-                  if (cw && ch) {
-                    b.endX = Math.max(0, Math.min(cw, b.endX));
-                    b.endY = Math.max(0, Math.min(ch, b.endY));
-                  }
-                } catch (_e) {}
+                // Clamp end to object bounds
+                b.endX = Math.max(objLeft, Math.min(objRight, b.endX));
+                b.endY = Math.max(objTop, Math.min(objBottom, b.endY));
+              }
+              
+              // Update end local position for memory across mode switches
+              if (obj) {
+                const objCenterX2 = objLeft + (objRight - objLeft) / 2;
+                const objCenterY2 = objTop + (objBottom - objTop) / 2;
+                const rot2 = obj.rotation || 0;
+                const dxEnd = b.endX - objCenterX2;
+                const dyEnd = b.endY - objCenterY2;
+                const cos2 = Math.cos(rot2), sin2 = Math.sin(rot2);
+                b.endLocalX = dxEnd * cos2 + dyEnd * sin2;
+                b.endLocalY = -dxEnd * sin2 + dyEnd * cos2;
               }
             }
           }
           // Throttle overlay redraw and preview recomposition to once per animation frame
+          scheduleDrawCutoutBonesOverlay();
+          scheduleCutoutPreviewForTime();
+        }
+        lastCutoutX = x; lastCutoutY = y;
+        cutoutCtx.restore();
+        return;
+      } else if (currentTool === 'bones' && cutoutBonesModeObjDrag) {
+        // Handle object dragging in bones mode (when not on a bone node)
+        const bone = cutoutBones[cutoutBonesModeObjDrag.boneIndex];
+        if (bone && bone.objectRef) {
+          const obj = bone.objectRef;
+          const dx = x - cutoutBonesModeObjDrag.offsetX - obj.x;
+          const dy = y - cutoutBonesModeObjDrag.offsetY - obj.y;
+          obj.x += dx;
+          obj.y += dy;
+          // Move both bone endpoints with the object
+          bone.startX += dx;
+          bone.startY += dy;
+          bone.endX += dx;
+          bone.endY += dy;
+          // Clamp to canvas bounds
+          try {
+            const cw = cutoutCanvas ? cutoutCanvas.width : 0;
+            const ch = cutoutCanvas ? cutoutCanvas.height : 0;
+            if (cw && ch) {
+              bone.startX = Math.max(0, Math.min(cw, bone.startX));
+              bone.startY = Math.max(0, Math.min(ch, bone.startY));
+              bone.endX = Math.max(0, Math.min(cw, bone.endX));
+              bone.endY = Math.max(0, Math.min(ch, bone.endY));
+            }
+          } catch (_e) {}
           scheduleDrawCutoutBonesOverlay();
           scheduleCutoutPreviewForTime();
         }
@@ -8387,24 +8840,38 @@
       if (currentTool === 'bones') {
         if (cutoutIsDraggingBoneHandle) {
           try { saveState(); } catch (_e) {}
+          
+          // Reset bone rotation state if we were rotating
+          if (cutoutIsRotatingBone) {
+            cutoutIsRotatingBone = false;
+            cutoutBoneRotationData = null;
+            cutoutIsDraggingBoneHandle = false;
+            cutoutBoneDrag = null;
+            ensureCutoutBonesOverlay();
+            drawCutoutBonesOverlay();
+            renderCutoutPreviewForTime();
+            return;
+          }
+          
           if (cutoutBoneDrag) {
             const draggedIndex = cutoutBoneDrag.boneIndex;
             const draggedBone = cutoutBones[draggedIndex];
             const activeClip = getActiveCutoutClipIndex();
-            if (draggedBone && draggedBone.clipIndex === activeClip) {
+            if (draggedBone && draggedBone.clipIndex === activeClip && cutoutBoneDrag.handle !== 'rotation') {
               const hx = cutoutBoneDrag.handle === 'start' ? draggedBone.startX : draggedBone.endX;
               const hy = cutoutBoneDrag.handle === 'start' ? draggedBone.startY : draggedBone.endY;
-              const target = getCutoutBoneHandleNearForConnection(hx, hy, draggedIndex);
-              if (target) {
+              // Only END nodes can connect to START nodes
+              const target = getCutoutBoneHandleNearForConnection(hx, hy, draggedIndex, cutoutBoneDrag.handle);
+              if (target && cutoutBoneDrag.handle === 'end' && target.handle === 'start') {
                 const parent = cutoutBones[target.boneIndex];
                 if (parent && parent.clipIndex === activeClip) {
                   draggedBone.parentBoneIndex = target.boneIndex;
-                  draggedBone.attachedAt = cutoutBoneDrag.handle;
-                  draggedBone.parentAttach = target.handle;
-                  const px = target.handle === 'start' ? parent.startX : parent.endX;
-                  const py = target.handle === 'start' ? parent.startY : parent.endY;
-                  if (draggedBone.attachedAt === 'start') { draggedBone.startX = px; draggedBone.startY = py; }
-                  else { draggedBone.endX = px; draggedBone.endY = py; }
+                  draggedBone.attachedAt = 'end'; // Child's END is attached
+                  draggedBone.parentAttach = 'start'; // To parent's START
+                  const px = parent.startX;
+                  const py = parent.startY;
+                  draggedBone.endX = px;
+                  draggedBone.endY = py;
                   enforceCutoutBoneConnections();
                 }
               }
@@ -8415,29 +8882,72 @@
           ensureCutoutBonesOverlay();
           drawCutoutBonesOverlay();
           renderCutoutPreviewForTime();
+        } else if (cutoutBonesModeObjDrag) {
+          // End object dragging in bones mode
+          cutoutBonesModeObjDrag = null;
+          ensureCutoutBonesOverlay();
+          drawCutoutBonesOverlay();
+          renderCutoutPreviewForTime();
         } else if (cutoutIsBoneLassoActive) {
           cutoutCreateSelectionFromPolygonForBones().then((res) => {
             if (res && res.obj) {
               const { cx, cy, angle, minProj, maxProj, vx, vy } = computePrincipalAxis(cutoutBoneLassoPoints);
-              const startX = cx + vx * minProj;
-              const startY = cy + vy * minProj;
-              const endX   = cx + vx * maxProj;
-              const endY   = cy + vy * maxProj;
-              const restLength = Math.hypot(endX - startX, endY - startY);
+              let startX = cx + vx * minProj;
+              let startY = cy + vy * minProj;
+              let endX   = cx + vx * maxProj;
+              let endY   = cy + vy * maxProj;
               const initialScale = res.obj.scale || 1;
               const initialAngle = Math.atan2(endY - startY, endX - startX);
               const activeClip = getActiveCutoutClipIndex();
-              // Clamp endpoints to canvas bounds before creating
-              try {
-                const cw = cutoutCanvas ? cutoutCanvas.width : 0;
-                const ch = cutoutCanvas ? cutoutCanvas.height : 0;
-                if (cw && ch) {
-                  startX = Math.max(0, Math.min(cw, startX));
-                  startY = Math.max(0, Math.min(ch, startY));
-                  endX = Math.max(0, Math.min(cw, endX));
-                  endY = Math.max(0, Math.min(ch, endY));
-                }
-              } catch (_e) {}
+              
+              // Store original pivot before bone mode
+              const objId = res.obj.id;
+              if (objId != null && !preBonePivotStorage[objId]) {
+                preBonePivotStorage[objId] = {
+                  pivotLocalX: (typeof res.obj.pivotLocalX === 'number') ? res.obj.pivotLocalX : undefined,
+                  pivotLocalY: (typeof res.obj.pivotLocalY === 'number') ? res.obj.pivotLocalY : undefined
+                };
+              }
+              
+              // Get object bounds for constraining bone endpoints
+              const baseW = (res.obj.drawW != null) ? res.obj.drawW : ((res.obj.img && (res.obj.img.naturalWidth || res.obj.img.width)) || 0);
+              const baseH = (res.obj.drawH != null) ? res.obj.drawH : ((res.obj.img && (res.obj.img.naturalHeight || res.obj.img.height)) || 0);
+              const effScaleX = (typeof res.obj.scaleX === 'number' ? res.obj.scaleX : 1);
+              const effScaleY = (typeof res.obj.scaleY === 'number' ? res.obj.scaleY : 1);
+              const objW = baseW * (res.obj.scale || 1) * effScaleX;
+              const objH = baseH * (res.obj.scale || 1) * effScaleY;
+              const objLeft = res.obj.x;
+              const objTop = res.obj.y;
+              const objRight = objLeft + objW;
+              const objBottom = objTop + objH;
+              
+              // Clamp bone endpoints to object bounds (selection box area)
+              startX = Math.max(objLeft, Math.min(objRight, startX));
+              startY = Math.max(objTop, Math.min(objBottom, startY));
+              endX = Math.max(objLeft, Math.min(objRight, endX));
+              endY = Math.max(objTop, Math.min(objBottom, endY));
+              
+              const restLength = Math.hypot(endX - startX, endY - startY);
+              
+              // Calculate bone anchor in object's local space (unrotated)
+              // This is used as the pinned point when rotating via bone
+              const objCenterX = objLeft + objW / 2;
+              const objCenterY = objTop + objH / 2;
+              const rot = res.obj.rotation || 0;
+              const cos = Math.cos(rot), sin = Math.sin(rot);
+              
+              // Start node local position (anchor point)
+              const dxStart = startX - objCenterX;
+              const dyStart = startY - objCenterY;
+              const pinnedLocalX = dxStart * cos + dyStart * sin;
+              const pinnedLocalY = -dxStart * sin + dyStart * cos;
+              
+              // End node local position (tracked for memory across mode switches)
+              const dxEnd = endX - objCenterX;
+              const dyEnd = endY - objCenterY;
+              const endLocalX = dxEnd * cos + dyEnd * sin;
+              const endLocalY = -dxEnd * sin + dyEnd * cos;
+              
               cutoutBones.push({
                 clipIndex: activeClip,
                 objectRef: res.obj,
@@ -8446,8 +8956,25 @@
                 initialScale,
                 restAngle: initialAngle,
                 prevAngle: initialAngle,
-                imageRotationOffset: (res.obj.rotation || 0) - initialAngle
+                imageRotationOffset: (res.obj.rotation || 0) - initialAngle,
+                pinnedLocalX,
+                pinnedLocalY,
+                endLocalX,
+                endLocalY
               });
+              
+              // Synchronize object position with bone formula to prevent mismatch
+              // This ensures stored position equals what renderCutoutPreviewForTime computes
+              // The formula: objectCenter = boneStart - rotatedPinnedLocal, then x = center - width/2
+              const syncRot = res.obj.rotation || 0;
+              const syncCos = Math.cos(syncRot), syncSin = Math.sin(syncRot);
+              const syncRx = pinnedLocalX * syncCos - pinnedLocalY * syncSin;
+              const syncRy = pinnedLocalX * syncSin + pinnedLocalY * syncCos;
+              const syncCenterX = startX - syncRx;
+              const syncCenterY = startY - syncRy;
+              res.obj.x = syncCenterX - objW / 2;
+              res.obj.y = syncCenterY - objH / 2;
+              
               try { saveState(); } catch (_e) {}
               ensureCutoutBonesOverlay();
               drawCutoutBonesOverlay();
@@ -8773,6 +9300,7 @@
     let resizeStartPosX = 0;
     let resizeStartPosY = 0;
     let isRotatingImage = false;
+    let isDraggingPivot = false;
     let activeTransformHandle = null;
     let rotationCenterX = 0;
     let rotationCenterY = 0;
@@ -10295,6 +10823,8 @@
           child.style.display = 'none';
         }
       });
+      // Check pro status for conditional rendering
+      const isPro = !!(window.userHasProAccess || (typeof getCookie === 'function' && getCookie('frameStudioPro') === '1') || localStorage.getItem('frameStudioProUnlocked') === '1');
       // Inject cutout effects list if not present
       if (!document.getElementById('cutout-effects-list')) {
         const wrapper = document.createElement('div');
@@ -10341,7 +10871,7 @@
             </div>
           </div>
 
-          <div class="tool-btn w-full text-xs flex items-center justify-between locked-feature" style="padding:6px 8px" data-effect-id="analogHorror" data-allow-preview="true" data-locked="true" aria-disabled="true" title="Locked feature">
+          <div class="tool-btn w-full text-xs flex items-center justify-between${isPro ? '' : ' locked-feature'}" style="padding:6px 8px" data-effect-id="analogHorror" data-allow-preview="true"${isPro ? '' : ' data-locked="true" aria-disabled="true" title="Locked feature"'}>
             <div class="flex items-center gap-2 effect-drag-handle" draggable="false">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M6 9h6M15 12h4M7 14h3"/></svg>
               <span>Analog Horror</span>
@@ -10349,7 +10879,7 @@
             <button class="tool-btn effect-settings-btn p-1" aria-label="Analog Horror settings">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 6 6-6"/></svg>
             </button>
-            <span class="locked-badge" aria-hidden="true">Pro</span>
+            ${isPro ? '' : '<span class="locked-badge" aria-hidden="true">Pro</span>'}
           </div>
           <div class="mt-1 hidden effect-settings-panel">
             <div class="grid grid-cols-2 gap-2 text-[10px] text-gray-300">
@@ -10378,7 +10908,7 @@
             </div>
           </div>
 
-          <div class="tool-btn w-full text-xs flex items-center justify-between locked-feature" style="padding:6px 8px" data-effect-id="rain" data-allow-preview="true" data-locked="true" aria-disabled="true" title="Locked feature">
+          <div class="tool-btn w-full text-xs flex items-center justify-between${isPro ? '' : ' locked-feature'}" style="padding:6px 8px" data-effect-id="rain" data-allow-preview="true"${isPro ? '' : ' data-locked="true" aria-disabled="true" title="Locked feature"'}>
             <div class="flex items-center gap-2 effect-drag-handle" draggable="false">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 4v4M12 4v6M18 4v5"/><path d="M5 20l2-3M11 20l2-3M17 20l2-3"/></svg>
               <span>Rain</span>
@@ -10386,7 +10916,7 @@
             <button class="tool-btn effect-settings-btn p-1" aria-label="Rain settings">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M6 9l6 6 6-6"/></svg>
             </button>
-            <span class="locked-badge" aria-hidden="true">Pro</span>
+            ${isPro ? '' : '<span class="locked-badge" aria-hidden="true">Pro</span>'}
           </div>
           <div class="mt-1 hidden effect-settings-panel">
             <div class="grid grid-cols-2 gap-2 text-[10px] text-gray-300">
@@ -10934,7 +11464,12 @@
       if (effectId === 'analogHorror') updateAnalogOverlay();
     }
 
-    /* Added zoom handler function */
+    /* Added zoom handler function - Point-accurate zoom */
+    // Per-frame point origin storage for point-accurate zoom
+    if (!window.zoomOriginPoints) {
+      window.zoomOriginPoints = [];
+    }
+    
     function handleZoom(e, frameIndex) {
       const delta = e.deltaY > 0 ? -0.1 : 0.1;
       // Limit zoom to not go below 1.0 (actual canvas size) and max 3.0
@@ -10944,29 +11479,52 @@
       zoomLevels[frameIndex] = newScale;
       
       const canvas = canvases[frameIndex];
+      if (!canvas) return;
       const onionCanvas = onionCanvases[frameIndex];
       const guideCanvas = guideCanvases[frameIndex];
       const container = canvas.parentElement;
-      // Per-frame anchor memory
-      if (!window.zoomAnchorCorners) {
-        window.zoomAnchorCorners = new Array(zoomLevels.length).fill(null);
-      }
-      // Locking behavior: only set anchor at minimum zoom (1.0) when zooming in; reset on full zoom-out.
-      if (newScale > oldScale) {
-        if (oldScale <= 1.0 + 1e-9) {
-          const rect = container.getBoundingClientRect();
-          const q = getQuadrantFromPoint(rect, e.clientX, e.clientY);
-          window.zoomAnchorCorners[frameIndex] = q || 'center';
-        }
-      }
-      const origin = anchorToCssOrigin(window.zoomAnchorCorners[frameIndex] || 'center');
+      if (!container) return;
       
-      // Apply zoom about anchored corner (no pan)
+      const rect = container.getBoundingClientRect();
+      
+      // Point-accurate zoom: always update origin to current mouse position
+      // Ensure array is large enough
+      while (window.zoomOriginPoints.length <= frameIndex) {
+        window.zoomOriginPoints.push(null);
+      }
+      
+      if (newScale > 1.0) {
+        const newPoint = getPointOrigin(rect, e.clientX, e.clientY);
+        if (oldScale <= 1.0 + 1e-9) {
+          // Starting fresh zoom - use exact mouse position
+          window.zoomOriginPoints[frameIndex] = newPoint;
+        } else if (window.zoomOriginPoints[frameIndex]) {
+          // Already zoomed - smoothly interpolate origin towards new point
+          const t = Math.min(1, (3.0 - oldScale) / 2.0) * 0.3;
+          window.zoomOriginPoints[frameIndex] = {
+            x: window.zoomOriginPoints[frameIndex].x + (newPoint.x - window.zoomOriginPoints[frameIndex].x) * t,
+            y: window.zoomOriginPoints[frameIndex].y + (newPoint.y - window.zoomOriginPoints[frameIndex].y) * t
+          };
+        } else {
+          window.zoomOriginPoints[frameIndex] = newPoint;
+        }
+      } else {
+        // Zoomed back to 1.0 - reset origin for next zoom
+        window.zoomOriginPoints[frameIndex] = null;
+      }
+      
+      // Get the CSS origin string
+      const originPoint = window.zoomOriginPoints[frameIndex];
+      const origin = originPoint ? pointOriginToCss(originPoint) : 'center center';
+      
+      // Apply zoom about point-accurate origin
       ensureZoomCenterOverlay(container);
       canvas.style.transformOrigin = origin;
       canvas.style.transform = `scale(${zoomLevels[frameIndex]})`;
-      onionCanvas.style.transformOrigin = origin;
-      onionCanvas.style.transform = `scale(${zoomLevels[frameIndex]})`;
+      if (onionCanvas) {
+        onionCanvas.style.transformOrigin = origin;
+        onionCanvas.style.transform = `scale(${zoomLevels[frameIndex]})`;
+      }
       // Keep lasso overlay (if present on this frame) in sync
       if (typeof lassoOverlayCanvas !== 'undefined' && lassoOverlayCanvas && lassoOverlayCanvas.parentElement === container) {
         lassoOverlayCanvas.style.transformOrigin = origin;
@@ -10982,15 +11540,11 @@
         moveOverlayCanvas.style.transform = `scale(${zoomLevels[frameIndex]})`;
       }
       
-      // Ensure the canvas stays within the container bounds
-      const containerRect = container.getBoundingClientRect();
-      const canvasRect = canvas.getBoundingClientRect();
-      
       // If zoomed out too much, reset to minimum zoom
       if (zoomLevels[frameIndex] < 1.0) {
         zoomLevels[frameIndex] = 1.0;
         canvas.style.transform = 'scale(1)';
-        onionCanvas.style.transform = 'scale(1)';
+        if (onionCanvas) onionCanvas.style.transform = 'scale(1)';
       }
     }
 
@@ -11002,8 +11556,11 @@
       document.getElementById('desktop-btn').classList.toggle('active', mode === 'desktop');
       document.getElementById('phone-btn').classList.toggle('active', mode === 'phone');
       
-      // Reset zoom levels when switching viewports
+      // Reset zoom levels and origin points when switching viewports
       zoomLevels.fill(1.0);
+      if (window.zoomOriginPoints) {
+        window.zoomOriginPoints.fill(null);
+      }
       
       if (mode === 'desktop') {
         // Desktop: 16:9 aspect ratio
@@ -11283,11 +11840,22 @@
                       parentBoneIndex: (b.parentBoneIndex !== undefined ? b.parentBoneIndex : null),
                       attachedAt: (b.attachedAt !== undefined ? b.attachedAt : null),
                       parentAttach: (b.parentAttach !== undefined ? b.parentAttach : null),
+                      pinnedLocalX: (typeof b.pinnedLocalX === 'number' ? b.pinnedLocalX : undefined),
+                      pinnedLocalY: (typeof b.pinnedLocalY === 'number' ? b.pinnedLocalY : undefined),
+                      endLocalX: (typeof b.endLocalX === 'number' ? b.endLocalX : undefined),
+                      endLocalY: (typeof b.endLocalY === 'number' ? b.endLocalY : undefined),
                       objectIndex
                     };
                   }) : [];
                 } catch (_e) {
                   return [];
+                }
+              })(),
+              preBonePivotStorage: (function() {
+                try {
+                  return JSON.parse(JSON.stringify(preBonePivotStorage || {}));
+                } catch (_e) {
+                  return {};
                 }
               })()
             };
@@ -11583,11 +12151,21 @@
                   imageRotationOffset: sb.imageRotationOffset,
                   parentBoneIndex: sb.parentBoneIndex,
                   attachedAt: sb.attachedAt,
-                  parentAttach: sb.parentAttach
+                  parentAttach: sb.parentAttach,
+                  pinnedLocalX: sb.pinnedLocalX,
+                  pinnedLocalY: sb.pinnedLocalY,
+                  endLocalX: sb.endLocalX,
+                  endLocalY: sb.endLocalY
                 });
               });
               ensureCutoutBonesOverlay();
               drawCutoutBonesOverlay();
+            }
+            // Restore preBonePivotStorage
+            if (state.cutout.preBonePivotStorage) {
+              preBonePivotStorage = JSON.parse(JSON.stringify(state.cutout.preBonePivotStorage));
+            } else {
+              preBonePivotStorage = {};
             }
           } catch (_e) {}
         } catch (_e) {
@@ -12363,11 +12941,44 @@
         cutoutBoneLassoPoints = [];
         cutoutIsDraggingBoneHandle = false;
         cutoutBoneDrag = null;
+        cutoutBonesModeObjDrag = null;
         cutoutSelectedBoneIndex = -1;
         if (cutoutBonesOverlayCanvas) {
           cutoutBonesOverlayCanvas.remove();
           cutoutBonesOverlayCanvas = null;
           cutoutBonesOverlayCtx = null;
+        }
+        
+        // Restore original pivot for all objects that had bones attached
+        // when switching to regular selection mode
+        if (tool === 'select' || tool === 'select-lasso') {
+          try {
+            for (const objIdStr in preBonePivotStorage) {
+              const objId = parseInt(objIdStr, 10);
+              const stored = preBonePivotStorage[objId];
+              // Find the object across all clips
+              for (let ci = 0; ci < cutoutClips.length; ci++) {
+                const clip = cutoutClips[ci];
+                if (!clip || !Array.isArray(clip.objects)) continue;
+                for (let oi = 0; oi < clip.objects.length; oi++) {
+                  const obj = clip.objects[oi];
+                  if (obj && obj.id === objId) {
+                    // Restore original pivot
+                    if (stored.pivotLocalX !== undefined) {
+                      obj.pivotLocalX = stored.pivotLocalX;
+                    } else {
+                      delete obj.pivotLocalX;
+                    }
+                    if (stored.pivotLocalY !== undefined) {
+                      obj.pivotLocalY = stored.pivotLocalY;
+                    } else {
+                      delete obj.pivotLocalY;
+                    }
+                  }
+                }
+              }
+            }
+          } catch (_e) {}
         }
       }
       // Clean up magic lasso if switching away from magic tools
@@ -12447,6 +13058,48 @@
           moveOverlayCanvas = null;
           moveOverlayCtx = null;
         }
+        
+        // Restore bone positions from local coordinates when switching to bones mode
+        // This handles the case where objects were moved/rotated in select mode
+        try {
+          for (let bi = 0; bi < cutoutBones.length; bi++) {
+            const bone = cutoutBones[bi];
+            if (!bone || !bone.objectRef) continue;
+            const obj = bone.objectRef;
+            
+            // Get object dimensions
+            const baseW = (obj.drawW != null) ? obj.drawW : ((obj.img && (obj.img.naturalWidth || obj.img.width)) || 0);
+            const baseH = (obj.drawH != null) ? obj.drawH : ((obj.img && (obj.img.naturalHeight || obj.img.height)) || 0);
+            const effScaleX = (typeof obj.scaleX === 'number' ? obj.scaleX : 1);
+            const effScaleY = (typeof obj.scaleY === 'number' ? obj.scaleY : 1);
+            const objW = baseW * (obj.scale || 1) * effScaleX;
+            const objH = baseH * (obj.scale || 1) * effScaleY;
+            const objCenterX = obj.x + objW / 2;
+            const objCenterY = obj.y + objH / 2;
+            const rot = obj.rotation || 0;
+            const cos = Math.cos(rot), sin = Math.sin(rot);
+            
+            // Restore start position from pinnedLocalX/Y
+            if (typeof bone.pinnedLocalX === 'number' && typeof bone.pinnedLocalY === 'number') {
+              const rx = bone.pinnedLocalX * cos - bone.pinnedLocalY * sin;
+              const ry = bone.pinnedLocalX * sin + bone.pinnedLocalY * cos;
+              bone.startX = objCenterX + rx;
+              bone.startY = objCenterY + ry;
+            }
+            
+            // Restore end position from endLocalX/Y
+            if (typeof bone.endLocalX === 'number' && typeof bone.endLocalY === 'number') {
+              const rxEnd = bone.endLocalX * cos - bone.endLocalY * sin;
+              const ryEnd = bone.endLocalX * sin + bone.endLocalY * cos;
+              bone.endX = objCenterX + rxEnd;
+              bone.endY = objCenterY + ryEnd;
+            }
+            
+            // Update rest length after position restore
+            bone.restLength = Math.hypot(bone.endX - bone.startX, bone.endY - bone.startY);
+          }
+        } catch (_e) {}
+        
         // Ensure bones overlay is visible to allow moving bones without accidental new lasso
         try { ensureCutoutBonesOverlay(); drawCutoutBonesOverlay(); } catch (_e) {}
       }
@@ -14206,18 +14859,12 @@
           const handle = currentTool === 'select' ? getResizeHandleAtPoint(selectedImageObject, lastX, lastY) : null;
           if (handle) {
             // Clicking on a handle - always handle this regardless of tool
-            if (handle === 'rotation') {
+          if (handle === 'rotation') {
               // Begin rotation
-              const baseW0 = (selectedImageObject && selectedImageObject.drawW != null)
-                ? selectedImageObject.drawW
-                : ((selectedImageObject && selectedImageObject.img && (selectedImageObject.img.naturalWidth || selectedImageObject.img.width || selectedImageObject.img.videoWidth)) || 0);
-              const baseH0 = (selectedImageObject && selectedImageObject.drawH != null)
-                ? selectedImageObject.drawH
-                : ((selectedImageObject && selectedImageObject.img && (selectedImageObject.img.naturalHeight || selectedImageObject.img.height || selectedImageObject.img.videoHeight)) || 0);
-              const w = baseW0 * (selectedImageObject.scale || 1) * (typeof selectedImageObject.scaleX === 'number' ? selectedImageObject.scaleX : 1);
-              const h = baseH0 * (selectedImageObject.scale || 1) * (typeof selectedImageObject.scaleY === 'number' ? selectedImageObject.scaleY : 1);
-              rotationCenterX = selectedImageObject.x + w / 2;
-              rotationCenterY = selectedImageObject.y + h / 2;
+            const geom = calculateSelectionHandleGeometry(selectedImageObject);
+            const pv = geom.pivot || geom.center;
+            rotationCenterX = pv.x;
+            rotationCenterY = pv.y;
               rotationStartAngle = Math.atan2(lastY - rotationCenterY, lastX - rotationCenterX);
               rotationCurrentAngle = selectedImageObject.rotation || 0;
               // If this image is attached to a bone, compute pinned local offset to keep start node fixed during rotation
@@ -14253,6 +14900,13 @@
               isDraggingImage = false;
               isResizingImage = false;
               return; // Don't continue to tool-specific logic
+            } else if (handle === 'pivot') {
+              // Begin pivot drag (no base redraw needed)
+              saveState();
+              isDraggingPivot = true;
+              activeTransformHandle = 'pivot';
+              refreshSelectionOverlay();
+              return;
             } else {
               // Begin resize
               resizeCorner = handle;
@@ -14641,7 +15295,8 @@
         const currentAngle = Math.atan2(y - rotationCenterY, x - rotationCenterX);
         const angleDelta = currentAngle - rotationStartAngle;
         selectedImageObject.rotation = rotationCurrentAngle + angleDelta;
-        // If attached to a bone, shift position to keep start node pinned
+        // If attached to a bone, shift position to keep start node pinned; else keep pivot fixed
+        let hadLinked = false;
         try {
           let linked = null;
           for (let i = 0; i < bones.length; i++) {
@@ -14667,8 +15322,26 @@
             const centerY = linked.startY - ry;
             obj.x = centerX - w / 2;
             obj.y = centerY - h / 2;
+            hadLinked = true;
           }
         } catch (_e) {}
+        if (!hadLinked) {
+          // Keep pivot fixed by adjusting position when rotating
+          const obj = selectedImageObject;
+          const objScaleX = (obj && typeof obj.scaleX === 'number') ? obj.scaleX : 1;
+          const objScaleY = (obj && typeof obj.scaleY === 'number') ? obj.scaleY : 1;
+          const baseW = (obj && obj.drawW != null) ? obj.drawW : ((obj && obj.img && (obj.img.naturalWidth || obj.img.width || obj.img.videoWidth)) || 0);
+          const baseH = (obj && obj.drawH != null) ? obj.drawH : ((obj && obj.img && (obj.img.naturalHeight || obj.img.height || obj.img.videoHeight)) || 0);
+          const w = baseW * (obj.scale || 1) * objScaleX;
+          const h = baseH * (obj.scale || 1) * objScaleY;
+          const dpx = ((typeof obj.pivotLocalX === 'number') ? obj.pivotLocalX : (w / 2)) - (w / 2);
+          const dpy = ((typeof obj.pivotLocalY === 'number') ? obj.pivotLocalY : (h / 2)) - (h / 2);
+          const rot = obj.rotation || 0;
+          const cx = rotationCenterX - (dpx * Math.cos(rot) - dpy * Math.sin(rot));
+          const cy = rotationCenterY - (dpx * Math.sin(rot) + dpy * Math.cos(rot));
+          obj.x = cx - w / 2;
+          obj.y = cy - h / 2;
+        }
         const geometry = calculateSelectionHandleGeometry(selectedImageObject);
         if (geometry && geometry.direction) {
           const relX = x - rotationCenterX;
@@ -14680,6 +15353,32 @@
         lastX = x;
         lastY = y;
         return; // Don't continue to tool-specific logic
+      } else if (selectedImageObject && isDraggingPivot) {
+        const obj = selectedImageObject;
+        const objScaleX = (obj && typeof obj.scaleX === 'number') ? obj.scaleX : 1;
+        const objScaleY = (obj && typeof obj.scaleY === 'number') ? obj.scaleY : 1;
+        const baseW = (obj && obj.drawW != null) ? obj.drawW : ((obj && obj.img && (obj.img.naturalWidth || obj.img.width || obj.img.videoWidth)) || 0);
+        const baseH = (obj && obj.drawH != null) ? obj.drawH : ((obj && obj.img && (obj.img.naturalHeight || obj.img.height || obj.img.videoHeight)) || 0);
+        const w = baseW * (obj.scale || 1) * objScaleX;
+        const h = baseH * (obj.scale || 1) * objScaleY;
+        const centerX = obj.x + w / 2;
+        const centerY = obj.y + h / 2;
+        const rot = obj.rotation || 0;
+        const dx = x - centerX;
+        const dy = y - centerY;
+        const localX = centerX + dx * Math.cos(-rot) - dy * Math.sin(-rot);
+        const localY = centerY + dx * Math.sin(-rot) + dy * Math.cos(-rot);
+        obj.pivotLocalX = Math.max(0, Math.min(w, localX - obj.x));
+        obj.pivotLocalY = Math.max(0, Math.min(h, localY - obj.y));
+        try {
+          const geom = calculateSelectionHandleGeometry(obj);
+          const baseLen = Math.hypot(geom.topMid.x - geom.pivot.x, geom.topMid.y - geom.pivot.y);
+          obj.rotationHandleDistance = baseLen + ROTATION_HANDLE_OFFSET;
+        } catch (_e) {}
+        refreshSelectionOverlay();
+        lastX = x;
+        lastY = y;
+        return;
       } else if (selectedImageObject && isResizingImage) {
         // Only start resizing after mouse has moved a minimum distance (prevents jumps on click)
         const dragDistance = Math.sqrt(
@@ -15278,7 +15977,7 @@
       }
       
       // GLOBAL: Always handle image manipulation end, regardless of current tool
-      if (isDraggingImage || isResizingImage || isRotatingImage) {
+      if (isDraggingImage || isResizingImage || isRotatingImage || isDraggingPivot) {
         // Validate selection before finishing
         if (selectedImageObject && !validateSelectedImage()) {
           selectedImageObject = null;
@@ -15288,6 +15987,7 @@
         isDraggingImage = false;
         isResizingImage = false;
         isRotatingImage = false;
+        isDraggingPivot = false;
         activeTransformHandle = null;
         
         if (selectedImageObject) {
@@ -15896,6 +16596,58 @@
         };
         drawJoint(bone.startX, bone.startY, hasParentAt('start') || hasChildAt('start'));
         drawJoint(bone.endX, bone.endY, hasParentAt('end') || hasChildAt('end'));
+        
+        // Draw rotation handle with dotted circle around start node
+        const rotHandleOffset = 45; // Distance from start to rotation handle
+        const boneAngle = Math.atan2(dy, dx);
+        // Rotation handle perpendicular to bone direction (above the start)
+        const rotHandleAngle = boneAngle - Math.PI / 2;
+        const rotHandleX = bone.startX + Math.cos(rotHandleAngle) * rotHandleOffset;
+        const rotHandleY = bone.startY + Math.sin(rotHandleAngle) * rotHandleOffset;
+        
+        // Draw dotted circle around start node (pivot indicator)
+        cutoutBonesOverlayCtx.beginPath();
+        cutoutBonesOverlayCtx.arc(bone.startX, bone.startY, 28, 0, Math.PI * 2);
+        cutoutBonesOverlayCtx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        cutoutBonesOverlayCtx.lineWidth = 1.5;
+        cutoutBonesOverlayCtx.setLineDash([4, 4]);
+        cutoutBonesOverlayCtx.stroke();
+        cutoutBonesOverlayCtx.setLineDash([]);
+        
+        // Draw line from start to rotation handle
+        cutoutBonesOverlayCtx.beginPath();
+        cutoutBonesOverlayCtx.moveTo(bone.startX, bone.startY);
+        cutoutBonesOverlayCtx.lineTo(rotHandleX, rotHandleY);
+        cutoutBonesOverlayCtx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        cutoutBonesOverlayCtx.lineWidth = 1.5;
+        cutoutBonesOverlayCtx.stroke();
+        
+        // Draw rotation handle node
+        const rotNodeRadius = 10;
+        cutoutBonesOverlayCtx.beginPath();
+        cutoutBonesOverlayCtx.arc(rotHandleX, rotHandleY, rotNodeRadius, 0, Math.PI * 2);
+        cutoutBonesOverlayCtx.fillStyle = 'rgba(100, 200, 255, 0.9)';
+        cutoutBonesOverlayCtx.fill();
+        cutoutBonesOverlayCtx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        cutoutBonesOverlayCtx.lineWidth = 2;
+        cutoutBonesOverlayCtx.stroke();
+        
+        // Draw rotation icon (curved arrow) inside the handle
+        cutoutBonesOverlayCtx.beginPath();
+        cutoutBonesOverlayCtx.arc(rotHandleX, rotHandleY, 5, -Math.PI * 0.7, Math.PI * 0.5);
+        cutoutBonesOverlayCtx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        cutoutBonesOverlayCtx.lineWidth = 1.5;
+        cutoutBonesOverlayCtx.stroke();
+        // Arrowhead
+        const arrowAngle = Math.PI * 0.5;
+        const arrowX = rotHandleX + 5 * Math.cos(arrowAngle);
+        const arrowY = rotHandleY + 5 * Math.sin(arrowAngle);
+        cutoutBonesOverlayCtx.beginPath();
+        cutoutBonesOverlayCtx.moveTo(arrowX + 3, arrowY - 2);
+        cutoutBonesOverlayCtx.lineTo(arrowX, arrowY);
+        cutoutBonesOverlayCtx.lineTo(arrowX + 3, arrowY + 2);
+        cutoutBonesOverlayCtx.stroke();
+        
         cutoutBonesOverlayCtx.restore();
       }
     }
@@ -15941,10 +16693,22 @@
     }
     function getCutoutBoneHandleAtPoint(x, y) {
       const hitRadius = 20;
+      const rotHitRadius = 15;
+      const rotHandleOffset = 45;
       const activeClip = getActiveCutoutClipIndex();
       for (let i = cutoutBones.length - 1; i >= 0; i--) {
         const b = cutoutBones[i];
         if (!b || b.clipIndex !== activeClip) continue;
+        // Check rotation handle first (higher priority)
+        const dx = b.endX - b.startX;
+        const dy = b.endY - b.startY;
+        const boneAngle = Math.atan2(dy, dx);
+        const rotHandleAngle = boneAngle - Math.PI / 2;
+        const rotHandleX = b.startX + Math.cos(rotHandleAngle) * rotHandleOffset;
+        const rotHandleY = b.startY + Math.sin(rotHandleAngle) * rotHandleOffset;
+        const dRot = Math.hypot(x - rotHandleX, y - rotHandleY);
+        if (dRot <= rotHitRadius) return { boneIndex: i, handle: 'rotation' };
+        // Then check start and end handles
         const dStart = Math.hypot(x - b.startX, y - b.startY);
         if (dStart <= hitRadius) return { boneIndex: i, handle: 'start' };
         const dEnd = Math.hypot(x - b.endX, y - b.endY);
@@ -15952,17 +16716,22 @@
       }
       return null;
     }
-    function getCutoutBoneHandleNearForConnection(x, y, excludeIndex) {
+    function getCutoutBoneHandleNearForConnection(x, y, excludeIndex, draggedHandle) {
+      // Connection rules: ONLY end nodes can connect to start nodes
+      // - If dragging an END handle, can only connect to a START handle
+      // - If dragging a START handle, cannot form new connections
+      if (draggedHandle === 'start') return null; // Start nodes cannot initiate connections
+      
       const hitRadius = 16;
       const activeClip = getActiveCutoutClipIndex();
       for (let i = cutoutBones.length - 1; i >= 0; i--) {
         if (i === excludeIndex) continue;
         const b = cutoutBones[i];
         if (!b || b.clipIndex !== activeClip) continue;
+        // Only check START handles as valid connection targets for END handles
         const dStart = Math.hypot(x - b.startX, y - b.startY);
         if (dStart <= hitRadius) return { boneIndex: i, handle: 'start' };
-        const dEnd = Math.hypot(x - b.endX, y - b.endY);
-        if (dEnd <= hitRadius) return { boneIndex: i, handle: 'end' };
+        // END-to-END connections are not allowed
       }
       return null;
     }
@@ -16252,6 +17021,11 @@
                   obj.x = oldX; obj.y = oldY;
                   obj.scale = 1; obj.scaleX = 1; obj.scaleY = 1; obj.rotation = 0;
                   obj.drawW = aligned.width; obj.drawH = aligned.height;
+                  // We baked transforms into pixels; clear zoom/rotation keys to avoid reapplying scale/rotation
+                  if (obj.keys) {
+                    if (Array.isArray(obj.keys.zoom)) obj.keys.zoom = [];
+                    if (Array.isArray(obj.keys.rotation)) obj.keys.rotation = [];
+                  }
                   resolve({ obj: newObj, minX: newObj.x, minY: newObj.y, maxX: newObj.x + newObj.drawW, maxY: newObj.y + newObj.drawH });
                 };
                 remImg.src = cropRem.toDataURL('image/png');
@@ -16551,16 +17325,21 @@
     }
 
     // Bones connections helpers
-    function getBoneHandleNearForConnection(x, y, excludeIndex) {
+    function getBoneHandleNearForConnection(x, y, excludeIndex, draggedHandle) {
+      // Connection rules: ONLY end nodes can connect to start nodes
+      // - If dragging an END handle, can only connect to a START handle
+      // - If dragging a START handle, cannot form new connections
+      if (draggedHandle === 'start') return null; // Start nodes cannot initiate connections
+      
       const hitRadius = 16;
       for (let i = bones.length - 1; i >= 0; i--) {
         if (i === excludeIndex) continue;
         const b = bones[i];
         if (!b || b.frameIndex !== currentFrame) continue;
+        // Only check START handles as valid connection targets for END handles
         const dStart = Math.hypot(x - b.startX, y - b.startY);
         if (dStart <= hitRadius) return { boneIndex: i, handle: 'start' };
-        const dEnd = Math.hypot(x - b.endX, y - b.endY);
-        if (dEnd <= hitRadius) return { boneIndex: i, handle: 'end' };
+        // END-to-END connections are not allowed
       }
       return null;
     }
@@ -17388,6 +18167,13 @@
       const centerX = obj.x + w / 2;
       const centerY = obj.y + h / 2;
       const rotation = obj.rotation || 0;
+      // Pivot (draggable center): stored in unrotated local space relative to top-left
+      const pivotLocalX = (typeof obj.pivotLocalX === 'number') ? obj.pivotLocalX : (w / 2);
+      const pivotLocalY = (typeof obj.pivotLocalY === 'number') ? obj.pivotLocalY : (h / 2);
+      const dpx = pivotLocalX - (w / 2);
+      const dpy = pivotLocalY - (h / 2);
+      const pivotX = centerX + dpx * Math.cos(rotation) - dpy * Math.sin(rotation);
+      const pivotY = centerY + dpx * Math.sin(rotation) + dpy * Math.cos(rotation);
       
       // Helper function to rotate a point around the center
       const rotatePoint = (px, py) => {
@@ -17417,8 +18203,8 @@
         y: (tl.y + tr.y) / 2
       };
 
-      let dirX = topMid.x - centerX;
-      let dirY = topMid.y - centerY;
+      let dirX = topMid.x - pivotX;
+      let dirY = topMid.y - pivotY;
       let dirLen = Math.hypot(dirX, dirY);
       if (dirLen < 1) {
         dirX = Math.cos(rotation - Math.PI / 2);
@@ -17437,14 +18223,16 @@
       }
       const rotationHandleDistance = Math.max(0, obj.rotationHandleDistance);
       const rotationHandle = {
-        x: centerX + dirX * rotationHandleDistance,
-        y: centerY + dirY * rotationHandleDistance
+        x: pivotX + dirX * rotationHandleDistance,
+        y: pivotY + dirY * rotationHandleDistance
       };
 
       return {
         width: w,
         height: h,
         center: { x: centerX, y: centerY },
+        pivot: { x: pivotX, y: pivotY },
+        pivotLocal: { x: pivotLocalX, y: pivotLocalY },
         rotation,
         corners,
         topMid,
@@ -17456,10 +18244,20 @@
 
     function getResizeHandleAtPoint(obj, x, y) {
       const geometry = calculateSelectionHandleGeometry(obj);
-      const { corners, rotationHandle } = geometry;
+      const { corners, rotationHandle, pivot } = geometry;
 
       // Use circular hit detection radius (more forgiving and works with rotation)
       const hitRadius = (HANDLE_SIZE + HANDLE_HIT_EXTRA) / 2;
+
+      // Check pivot handle (draggable center)
+      if (pivot && Number.isFinite(pivot.x) && Number.isFinite(pivot.y)) {
+        const distanceToPivot = Math.sqrt(
+          Math.pow(x - pivot.x, 2) + Math.pow(y - pivot.y, 2)
+        );
+        if (distanceToPivot <= hitRadius) {
+          return 'pivot';
+        }
+      }
 
       // Check rotation handle (center-connected node)
       const rotationRadius = hitRadius;
@@ -17520,16 +18318,24 @@
       const centerX = (obj.x + offsetX) + w / 2;
       const centerY = (obj.y + offsetY) + h / 2;
       const opacity = (obj && typeof obj.opacity === 'number') ? obj.opacity : 1;
+      // Determine pivot in local-unrotated coords; default to center
+      const pivotLocalX = (typeof obj.pivotLocalX === 'number') ? obj.pivotLocalX : (w / 2);
+      const pivotLocalY = (typeof obj.pivotLocalY === 'number') ? obj.pivotLocalY : (h / 2);
+      const dpx = pivotLocalX - (w / 2);
+      const dpy = pivotLocalY - (h / 2);
+      const rot = obj.rotation || 0;
+      const pivotX = centerX + dpx * Math.cos(rot) - dpy * Math.sin(rot);
+      const pivotY = centerY + dpx * Math.sin(rot) + dpy * Math.cos(rot);
       ctx.save();
       const baseAlpha = ctx.globalAlpha;
       ctx.globalAlpha = baseAlpha * opacity;
       const drawCore = (dx = 0, dy = 0) => {
-        if (obj.rotation && obj.rotation !== 0) {
-          ctx.translate(centerX, centerY);
-          ctx.rotate(obj.rotation);
-          ctx.drawImage(obj.img, -w / 2 + dx, -h / 2 + dy, w, h);
-          ctx.rotate(-obj.rotation);
-          ctx.translate(-centerX, -centerY);
+        if (rot && rot !== 0) {
+          ctx.translate(pivotX, pivotY);
+          ctx.rotate(rot);
+          ctx.drawImage(obj.img, -pivotLocalX + dx, -pivotLocalY + dy, w, h);
+          ctx.rotate(-rot);
+          ctx.translate(-pivotX, -pivotY);
         } else {
           ctx.drawImage(obj.img, obj.x + offsetX + dx, obj.y + offsetY + dy, w, h);
         }
@@ -18398,7 +19204,7 @@
 
     function drawResizeHandles(ctx, obj) {
       const geometry = calculateSelectionHandleGeometry(obj);
-      const { corners, center, rotationHandle } = geometry;
+      const { corners, center, pivot, rotationHandle } = geometry;
       const cornerRadius = Math.max(8, HANDLE_SIZE * 0.45);
       const centerRadius = Math.max(12, HANDLE_SIZE * 0.55);
       const rotationRadius = Math.max(8, HANDLE_SIZE * 0.45);
@@ -18428,17 +19234,17 @@
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
       ctx.lineWidth = 3.5;
       ctx.beginPath();
-      ctx.moveTo(center.x, center.y);
+      ctx.moveTo(pivot.x, pivot.y);
       ctx.lineTo(rotationHandle.x, rotationHandle.y);
       ctx.stroke();
 
       // Draw a dotted circle at the radius from center to rotation node
-      const circleRadius = Math.hypot(rotationHandle.x - center.x, rotationHandle.y - center.y);
+      const circleRadius = Math.hypot(rotationHandle.x - pivot.x, rotationHandle.y - pivot.y);
       ctx.strokeStyle = '#9ca3af';
       ctx.lineWidth = 3.5;
       ctx.setLineDash([6, 6]);
       ctx.beginPath();
-      ctx.arc(center.x, center.y, circleRadius, 0, Math.PI * 2);
+      ctx.arc(pivot.x, pivot.y, circleRadius, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
 
@@ -18460,7 +19266,7 @@
       });
 
       // Draw center node
-      drawCircleNode(center.x, center.y, centerRadius, false, defaultFill);
+      drawCircleNode(pivot.x, pivot.y, centerRadius, activeTransformHandle === 'pivot', defaultFill);
 
       // Draw rotation node
       drawCircleNode(rotationHandle.x, rotationHandle.y, rotationRadius, activeTransformHandle === 'rotation');
@@ -18661,7 +19467,19 @@
             copied.images = layer.images.map(obj => {
               const img = new Image();
               img.src = obj.src;
-              return { img, src: obj.src, x: obj.x, y: obj.y, scale: obj.scale, rotation: obj.rotation || 0 };
+              return { 
+                img, 
+                src: obj.src, 
+                x: obj.x, 
+                y: obj.y, 
+                scale: obj.scale, 
+                scaleX: (typeof obj.scaleX === 'number') ? obj.scaleX : 1,
+                scaleY: (typeof obj.scaleY === 'number') ? obj.scaleY : 1,
+                rotation: obj.rotation || 0,
+                pivotLocalX: (typeof obj.pivotLocalX === 'number') ? obj.pivotLocalX : undefined,
+                pivotLocalY: (typeof obj.pivotLocalY === 'number') ? obj.pivotLocalY : undefined,
+                rotationHandleDistance: (typeof obj.rotationHandleDistance === 'number') ? obj.rotationHandleDistance : undefined
+              };
             });
           }
           return copied;
