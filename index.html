@@ -6637,7 +6637,11 @@
             obj.scaleX = prevScaleX;
             obj.scaleY = prevScaleY;
             obj.rotation = prevRotation;
-            obj.drawW = aligned.width; obj.drawH = aligned.height;
+            // Avoid double-scaling: derive base draw size from the new raster size and current scales
+            const safeScale = (prevScale || 1) * (prevScaleX || 1);
+            const safeScaleY = (prevScale || 1) * (prevScaleY || 1);
+            obj.drawW = safeScale ? aligned.width / safeScale : aligned.width;
+            obj.drawH = safeScaleY ? aligned.height / safeScaleY : aligned.height;
             obj.isImage = true;
             // Keep existing keys; do not clear rotation/zoom so bone-linked transforms remain intact
             renderCutoutPreviewForTime && renderCutoutPreviewForTime();
