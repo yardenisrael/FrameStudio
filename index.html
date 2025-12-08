@@ -31,10 +31,10 @@
   
   <!-- Open Graph / Facebook -->
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://studioframe.live/">
+  <meta property="og:url" content="https://framestudio.live/">
   <meta property="og:title" content="Frame Studio - Animate Images Online | Lightweight 2D Animation Tool">
   <meta property="og:description" content="Animate your images online with Frame Studio. Draw on the canvas, move layers, and build simple frame-by-frame motion without heavy apps. Lightweight and ready when you just want pictures to move.">
-  <meta property="og:image" content="https://studioframe.live/favicon.png">
+  <meta property="og:image" content="https://framestudio.live/favicon.png">
   <meta property="og:image:width" content="410">
   <meta property="og:image:height" content="410">
   <meta property="og:image:alt" content="Frame Studio Animation Tool Logo">
@@ -43,16 +43,16 @@
   
   <!-- Twitter -->
   <meta property="twitter:card" content="summary_large_image">
-  <meta property="twitter:url" content="https://studioframe.live/">
+  <meta property="twitter:url" content="https://framestudio.live/">
   <meta property="twitter:title" content="Frame Studio - Animate Images Online | Lightweight 2D Animation Tool">
   <meta property="twitter:description" content="Animate your images online with Frame Studio. Draw on the canvas, move layers, and build simple frame-by-frame motion without heavy apps. Lightweight and ready when you just want pictures to move.">
-  <meta property="twitter:image" content="https://studioframe.live/favicon.png">
+  <meta property="twitter:image" content="https://framestudio.live/favicon.png">
   <meta property="twitter:image:alt" content="Frame Studio Animation Tool Logo">
   <meta property="twitter:creator" content="@FrameStudio">
   <meta property="twitter:site" content="@FrameStudio">
   
   <!-- Canonical URL -->
-  <link rel="canonical" href="https://studioframe.live/">
+  <link rel="canonical" href="https://framestudio.live/">
   
   <!-- Performance and SEO optimizations -->
   <link rel="preconnect" href="https://cdn.tailwindcss.com">
@@ -81,7 +81,7 @@
     "name": "Frame Studio - Online Image Animation Tool",
     "alternateName": "Frame Studio Animation Tool",
     "description": "Animate your images online with a lightweight canvas editor. Draw, move layers, and build quick frame-by-frame motion without heavy software. Great for pixel art, sprites, and simple loops you can export to MP4.",
-    "url": "https://studioframe.live/",
+    "url": "https://framestudio.live/",
     "applicationCategory": "DesignApplication",
     "operatingSystem": "Any",
     "browserRequirements": "Requires JavaScript. Requires HTML5.",
@@ -119,17 +119,17 @@
     "author": {
       "@type": "Organization",
       "name": "Frame Studio",
-      "url": "https://studioframe.live/"
+      "url": "https://framestudio.live/"
     },
     "publisher": {
       "@type": "Organization",
       "name": "Frame Studio",
-      "url": "https://studioframe.live/"
+      "url": "https://framestudio.live/"
     },
     "keywords": "animate images online, animate online, online image animation tool, simple animation editor, lightweight animation software, frame by frame animation, canvas animation, pixel art animation, sprite animation, mp4 export, onion skinning, animation layers, timeline editor",
     "inLanguage": "en-US",
     "isAccessibleForFree": true,
-    "screenshot": "https://studioframe.live/favicon.png"
+    "screenshot": "https://framestudio.live/favicon.png"
   }
   </script>
   
@@ -193,19 +193,19 @@
         "@type": "ListItem",
         "position": 1,
         "name": "Home",
-        "item": "https://studioframe.live/"
+        "item": "https://framestudio.live/"
       },
       {
         "@type": "ListItem",
         "position": 2,
         "name": "Animation Software",
-        "item": "https://studioframe.live/#animation-software"
+        "item": "https://framestudio.live/#animation-software"
       },
       {
         "@type": "ListItem",
         "position": 3,
         "name": "Online Image Animation Tool",
-        "item": "https://studioframe.live/#free-animation-tool"
+        "item": "https://framestudio.live/#free-animation-tool"
       }
     ]
   }
@@ -6625,17 +6625,21 @@
             const offsetX = Math.max(0, Math.round((ax + rx) - oldX));
             const offsetY = Math.max(0, Math.round((ay + ry) - oldY));
             actx.drawImage(img, offsetX, offsetY);
+            // Preserve existing transform (scale/rotation) so bones stay aligned
+            const prevScale = obj.scale;
+            const prevScaleX = obj.scaleX;
+            const prevScaleY = obj.scaleY;
+            const prevRotation = obj.rotation;
             obj.img = aligned;
             obj.src = aligned.toDataURL('image/png');
             obj.x = oldX; obj.y = oldY;
-            obj.scale = 1; obj.scaleX = 1; obj.scaleY = 1; obj.rotation = 0;
+            obj.scale = prevScale;
+            obj.scaleX = prevScaleX;
+            obj.scaleY = prevScaleY;
+            obj.rotation = prevRotation;
             obj.drawW = aligned.width; obj.drawH = aligned.height;
             obj.isImage = true;
-            // Clear zoom/rotation keys to avoid reapplying transforms
-            if (obj.keys) {
-              if (Array.isArray(obj.keys.zoom)) obj.keys.zoom = [];
-              if (Array.isArray(obj.keys.rotation)) obj.keys.rotation = [];
-            }
+            // Keep existing keys; do not clear rotation/zoom so bone-linked transforms remain intact
             renderCutoutPreviewForTime && renderCutoutPreviewForTime();
           };
           img.src = dataUrl;
@@ -8515,6 +8519,12 @@
             const centerY = b.startY - ry;
             obj.x = centerX - w / 2;
             obj.y = centerY - h / 2;
+            // When recording, buffer position/rotation keys at current time so bone-driven edits keyframe transforms
+            if (cutoutRecorderArmed) {
+              if (!cutoutPendingDragKeys) cutoutPendingDragKeys = { position: null, rotation: null, zoom: null, opacity: null };
+              cutoutPendingDragKeys.position = { time: cutoutCurrentTime, x: obj.x, y: obj.y };
+              cutoutPendingDragKeys.rotation = { time: cutoutCurrentTime, deg: (obj.rotation || 0) * 180 / Math.PI };
+            }
             
             // Clamp bone endpoints to canvas
             try {
@@ -16729,6 +16739,32 @@
     function deleteCutoutBoneAtIndex(boneIndex) {
       if (boneIndex < 0 || boneIndex >= cutoutBones.length) return;
       try { saveState(); } catch (_e) {}
+      // Before removal, bake the current pose of any attached object so it keeps its world position/rotation
+      try {
+        const b = cutoutBones[boneIndex];
+        if (b && b.objectRef) {
+          const obj = b.objectRef;
+          // Use the same math as renderCutoutPreviewForTime to compute world-aligned position from pinnedLocal
+          if (typeof b.pinnedLocalX === 'number' && typeof b.pinnedLocalY === 'number') {
+            const baseW = (obj && obj.drawW != null) ? obj.drawW : ((obj && obj.img && (obj.img.naturalWidth || obj.img.width || obj.img.videoWidth)) || 0);
+            const baseH = (obj && obj.drawH != null) ? obj.drawH : ((obj && obj.img && (obj.img.naturalHeight || obj.img.height || obj.img.videoHeight)) || 0);
+            const effScaleX = (typeof obj.scaleX === 'number') ? obj.scaleX : 1;
+            const effScaleY = (typeof obj.scaleY === 'number') ? obj.scaleY : 1;
+            const w = baseW * (obj.scale || 1) * effScaleX;
+            const h = baseH * (obj.scale || 1) * effScaleY;
+            const rot = obj.rotation || 0;
+            const cosR = Math.cos(rot), sinR = Math.sin(rot);
+            const rx = b.pinnedLocalX * cosR - b.pinnedLocalY * sinR;
+            const ry = b.pinnedLocalX * sinR + b.pinnedLocalY * cosR;
+            const centerX = b.startX - rx;
+            const centerY = b.startY - ry;
+            obj.x = centerX - w / 2;
+            obj.y = centerY - h / 2;
+          }
+          // Detach bone reference so future renders don't try to re-pin
+          b.objectRef = null;
+        }
+      } catch (_e) {}
       cutoutBones.splice(boneIndex, 1);
       // Re-index children parentBoneIndex references
       for (let i = 0; i < cutoutBones.length; i++) {
