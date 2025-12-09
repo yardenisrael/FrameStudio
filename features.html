@@ -3,29 +3,15 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Features - Studio Frame Animation Tool</title>
-  <meta name="description" content="Studio Frame features: onion skinning, layers, timeline editor, MP4 export, and more. Free online animation software.">
-  <meta name="keywords" content="animation features, onion skinning, layers, timeline editor, MP4 export, free animation software, Studio Frame features">
-  <meta name="author" content="Studio Frame">
+  <title>Features - Frame Studio Animation Tool</title>
+  <meta name="description" content="Animate images online with Frame Studio. Explore the new lasso toolkit (select, erase, extend, magic detail/in-between) and drag-and-drop effects you can drop on the canvas preview or timeline frames depending on the mode. Lightweight animation with layers, onion skinning, and MP4 export.">
+  <meta name="keywords" content="animate images online, lasso selection tool, erase with lasso, extend lasso, drag and drop effects, timeline easing, animation preview effects, onion skinning, layers, timeline editor, MP4 export, lightweight animation tool">
+  <meta name="author" content="Frame Studio">
   <meta name="robots" content="index, follow">
   
-  <!-- Open Graph / Facebook -->
-  <meta property="og:type" content="website">
-  <meta property="og:url" content="https://studioframe.live/features.html">
-  <meta property="og:title" content="Features - Studio Frame Animation Tool">
-  <meta property="og:description" content="Studio Frame features: onion skinning, layers, timeline editor, MP4 export, and more. Free online animation software.">
-  <meta property="og:image" content="https://studioframe.live/favicon.png">
-  <meta property="og:site_name" content="Studio Frame">
-  
-  <!-- Twitter -->
-  <meta property="twitter:card" content="summary_large_image">
-  <meta property="twitter:url" content="https://studioframe.live/features.html">
-  <meta property="twitter:title" content="Features - Studio Frame Animation Tool">
-  <meta property="twitter:description" content="Studio Frame features: onion skinning, layers, timeline editor, MP4 export, and more. Free online animation software.">
-  <meta property="twitter:image" content="https://studioframe.live/favicon.png">
   
   <!-- Canonical URL -->
-  <link rel="canonical" href="https://studioframe.live/features.html">
+  <link rel="canonical" href="https://framestudio.live/features.html">
   
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="./favicon.png?v=1">
@@ -75,6 +61,27 @@
       margin-right: 12px;
       color: #6366f1;
     }
+    
+    /* Custom scrollbar styling to match tutorials */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+      background: #28282e;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: #28282e;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: #5a5f65;
+      border-radius: 4px;
+      border: none;
+    }
+    
+    ::-webkit-scrollbar-corner {
+      background: transparent;
+    }
   </style>
 </head>
 <body>
@@ -83,11 +90,11 @@
     <div class="max-w-7xl mx-auto px-6 py-4">
       <div class="flex items-center justify-between">
         <div class="flex items-center gap-3">
-          <img src="favicon.png" alt="Studio Frame Logo" class="w-8 h-8 rounded-lg">
-          <h1 class="text-2xl font-bold text-white">Studio Frame</h1>
+          <img src="favicon.png" alt="Frame Studio Logo" class="w-8 h-8 rounded-lg">
+          <h1 class="text-2xl font-bold text-white">Frame Studio</h1>
         </div>
         <a href="/" class="btn-primary text-white px-6 py-2 rounded-lg font-medium">
-          Launch Studio Frame →
+          Launch Frame Studio →
         </a>
       </div>
     </div>
@@ -97,10 +104,10 @@
   <div class="max-w-7xl mx-auto px-6 py-16">
     <div class="text-center mb-16">
       <h1 class="text-5xl font-bold text-white mb-6">
-        Studio Frame <span class="gradient-text">Features</span>
+        Frame Studio <span class="gradient-text">Features</span>
       </h1>
       <p class="text-xl text-gray-300 max-w-3xl mx-auto">
-        Studio Frame is a <strong class="text-white">free online animation tool</strong> for creating professional 2D animations, pixel art, and sprite animations directly in your browser.
+        Frame Studio is a <strong class="text-white">free online animation tool</strong> for creating professional 2D animations, pixel art, and sprite animations directly in your browser.
       </p>
     </div>
 
@@ -116,11 +123,27 @@
           <h2 class="text-xl font-bold text-white">🎨 Professional Drawing Tools</h2>
         </div>
         <ul class="space-y-2 text-gray-300">
-          <li><strong class="text-white">Brush Tool</strong> - Smooth, variable-size brushes with opacity control</li>
-          <li><strong class="text-white">Pencil Tool</strong> - Precision drawing for pixel-perfect artwork</li>
-          <li><strong class="text-white">Eraser</strong> - Clean up mistakes with adjustable eraser sizes</li>
-          <li><strong class="text-white">Fill Tool</strong> - Instant color fills for faster workflow</li>
-          <li><strong class="text-white">Lasso Selection</strong> - Select and erase custom shapes</li>
+          <li><strong class="text-white">Brush Tool</strong> - Adjustable brush size and opacity.</li>
+          <li><strong class="text-white">Pencil Tool</strong> - Precise single-width strokes.</li>
+          <li><strong class="text-white">Eraser</strong> - Removes strokes with size control.</li>
+          <li><strong class="text-white">Fill Tool</strong> - Flood fills an area with one color.</li>
+          <li><strong class="text-white">Lasso Selection</strong> - Selects an area to move or erase.</li>
+        </ul>
+      </div>
+
+      <!-- Lasso Toolkit -->
+      <div class="feature-card rounded-xl p-6">
+        <div class="flex items-center mb-4">
+          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7c2-2 4-2 6 0s4 2 6 0 4-2 6 0v10c-2 2-4 2-6 0s-4-2-6 0-4 2-6 0V7z"/>
+          </svg>
+          <h2 class="text-xl font-bold text-white">🧲 Lasso Toolkit</h2>
+        </div>
+        <ul class="space-y-2 text-gray-300">
+          <li><strong class="text-white">Select Lasso</strong> - Freeform select to move or scale an area.</li>
+          <li><strong class="text-white">Eraser Lasso</strong> - Deletes what’s inside the lasso shape.</li>
+          <li><strong class="text-white">Extend Lasso</strong> - Expands the selection outward to fill gaps.</li>
+          <li><strong class="text-white">Magic Lassos</strong> - Adds fill or in-between detail on release.</li>
         </ul>
       </div>
 
@@ -133,11 +156,26 @@
           <h2 class="text-xl font-bold text-white">🎬 Animation Features</h2>
         </div>
         <ul class="space-y-2 text-gray-300">
-          <li><strong class="text-white">6 Frames</strong> - Perfect for short looping animations</li>
-          <li><strong class="text-white">Onion Skinning</strong> - See previous frames while drawing for smooth motion</li>
-          <li><strong class="text-white">Timeline Editor</strong> - Control frame duration with draggable ribs</li>
-          <li><strong class="text-white">Frame Duplication</strong> - Speed up workflow by copying frames</li>
-          <li><strong class="text-white">Custom Frame Rates</strong> - Adjust FPS from 1 to 60</li>
+          <li><strong class="text-white">6 Frames</strong> - Short loop timeline with six slots.</li>
+          <li><strong class="text-white">Onion Skinning</strong> - Shows nearby frames while drawing.</li>
+          <li><strong class="text-white">Timeline Editor</strong> - Adjusts frame duration on the strip.</li>
+          <li><strong class="text-white">Frame Duplication</strong> - Copies a frame for reuse.</li>
+          <li><strong class="text-white">Custom Frame Rates</strong> - Sets FPS manually.</li>
+        </ul>
+      </div>
+
+      <!-- Magic Effects & Timeline -->
+      <div class="feature-card rounded-xl p-6">
+        <div class="flex items-center mb-4">
+          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12l4 4L19 7"/>
+          </svg>
+          <h2 class="text-xl font-bold text-white">✨ Drag-and-Drop Effects</h2>
+        </div>
+        <ul class="space-y-2 text-gray-300">
+          <li><strong class="text-white">Canvas Effects</strong> - Drop visual effects onto the preview.</li>
+          <li><strong class="text-white">Timeline Effects</strong> - Drop timing/ease effects onto frames.</li>
+          <li><strong class="text-white">Mode-aware</strong> - Drops target canvas in Draw mode; timeline in Cut Out.</li>
         </ul>
       </div>
 
@@ -150,10 +188,10 @@
           <h2 class="text-xl font-bold text-white">📐 Layer System</h2>
         </div>
         <ul class="space-y-2 text-gray-300">
-          <li><strong class="text-white">Multiple Layers</strong> - Organize complex animations</li>
-          <li><strong class="text-white">Layer Visibility</strong> - Show/hide layers independently</li>
-          <li><strong class="text-white">Layer Preview</strong> - Preview individual layer animations</li>
-          <li><strong class="text-white">Independent Animation</strong> - Each layer animates separately</li>
+          <li><strong class="text-white">Multiple Layers</strong> - Stack artwork in separate layers.</li>
+          <li><strong class="text-white">Layer Visibility</strong> - Toggle layers on or off.</li>
+          <li><strong class="text-white">Layer Preview</strong> - Solo a layer to view it.</li>
+          <li><strong class="text-white">Independent Animation</strong> - Animate layers separately.</li>
         </ul>
       </div>
 
@@ -166,10 +204,10 @@
           <h2 class="text-xl font-bold text-white">📱 Responsive Design</h2>
         </div>
         <ul class="space-y-2 text-gray-300">
-          <li><strong class="text-white">Desktop Mode</strong> - 16:9 landscape format</li>
-          <li><strong class="text-white">Phone Mode</strong> - 9:16 portrait format</li>
-          <li><strong class="text-white">Touch Support</strong> - Works on tablets and mobile devices</li>
-          <li><strong class="text-white">Zoom Control</strong> - Mouse wheel zoom for precision work</li>
+          <li><strong class="text-white">Desktop Mode</strong> - 16:9 layout.</li>
+          <li><strong class="text-white">Phone Mode</strong> - 9:16 layout.</li>
+          <li><strong class="text-white">Touch Support</strong> - Works with touch input.</li>
+          <li><strong class="text-white">Zoom Control</strong> - Scroll to zoom.</li>
         </ul>
       </div>
 
@@ -182,10 +220,10 @@
           <h2 class="text-xl font-bold text-white">💾 Export Options</h2>
         </div>
         <ul class="space-y-2 text-gray-300">
-          <li><strong class="text-white">MP4 Video Export</strong> - High-quality video output</li>
-          <li><strong class="text-white">No Watermarks</strong> - Your work stays yours</li>
-          <li><strong class="text-white">Custom Frame Rates</strong> - Control playback speed</li>
-          <li><strong class="text-white">Completely Free</strong> - No hidden costs or limitations</li>
+          <li><strong class="text-white">MP4 Video Export</strong> - Exports animation as MP4.</li>
+          <li><strong class="text-white">No Watermarks</strong> - Exports without branding.</li>
+          <li><strong class="text-white">Custom Frame Rates</strong> - Sets output FPS.</li>
+          <li><strong class="text-white">Completely Free</strong> - No cost to export.</li>
         </ul>
       </div>
 
@@ -210,82 +248,17 @@
       </div>
     </div>
 
-    <!-- Why Choose Studio Frame -->
-    <div class="bg-gradient-to-r from-purple-900/20 to-blue-900/20 rounded-2xl p-8 mb-16 border border-purple-500/20">
-      <h2 class="text-3xl font-bold text-white mb-6 text-center">Why Choose Studio Frame?</h2>
-      <p class="text-lg text-gray-300 mb-8 text-center max-w-4xl mx-auto">
-        Unlike expensive desktop software, Studio Frame runs entirely in your web browser. No downloads, no installation, no subscriptions. Just open the page and start creating.
+    <!-- Blog CTA -->
+    <div class="bg-gradient-to-r from-purple-900/20 to-blue-900/20 rounded-2xl p-8 mb-16 border border-purple-500/20 text-center">
+      <h2 class="text-3xl font-bold text-white mb-4">Check out the Frame Studio blog</h2>
+      <p class="text-lg text-gray-300 mb-6 max-w-3xl mx-auto">
+        Learn how to animate images with step-by-step tips and workflows from the Frame Studio team.
       </p>
-      
-      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <div class="text-center">
-          <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-            </svg>
-          </div>
-          <h3 class="text-lg font-semibold text-white mb-2">Game Developers</h3>
-          <p class="text-gray-300">Creating sprite animations</p>
-        </div>
-        
-        <div class="text-center">
-          <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-            </svg>
-          </div>
-          <h3 class="text-lg font-semibold text-white mb-2">Digital Artists</h3>
-          <p class="text-gray-300">Making animated GIFs</p>
-        </div>
-        
-        <div class="text-center">
-          <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 0h10m-10 0a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2M9 8h6m-6 4h6m-6 4h6"/>
-            </svg>
-          </div>
-          <h3 class="text-lg font-semibold text-white mb-2">Pixel Art Enthusiasts</h3>
-          <p class="text-gray-300">Creating pixel-perfect animations</p>
-        </div>
-        
-        <div class="text-center">
-          <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 0h10m-10 0a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2M9 8h6m-6 4h6m-6 4h6"/>
-            </svg>
-          </div>
-          <h3 class="text-lg font-semibold text-white mb-2">Content Creators</h3>
-          <p class="text-gray-300">Social media animations</p>
-        </div>
-        
-        <div class="text-center">
-          <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-            </svg>
-          </div>
-          <h3 class="text-lg font-semibold text-white mb-2">Students</h3>
-          <p class="text-gray-300">Learning animation</p>
-        </div>
-        
-        <div class="text-center">
-          <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-            </svg>
-          </div>
-          <h3 class="text-lg font-semibold text-white mb-2">Professionals</h3>
-          <p class="text-gray-300">Quick prototyping</p>
-        </div>
-      </div>
-    </div>
-
-    <!-- CTA Section -->
-    <div class="text-center">
-      <a href="/" class="btn-primary text-white px-8 py-4 rounded-lg font-medium text-lg inline-block">
-        Start Animating Now →
+      <a href="blog.html" class="btn-primary text-white px-8 py-3 rounded-lg font-medium inline-block">
+        Read the blog →
       </a>
     </div>
+
   </div>
 
   <!-- Footer -->
@@ -297,9 +270,10 @@
           <a href="features.html" class="hover:text-white transition-colors">Features</a> | 
           <a href="tutorials.html" class="hover:text-white transition-colors">Tutorials</a>
         </p>
-        <p class="text-sm">© 2024 Studio Frame. Free online animation software.</p>
+        <p class="text-sm">© 2024 Frame Studio. Free online animation software.</p>
       </div>
     </div>
   </div>
 </body>
 </html>
+
