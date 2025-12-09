@@ -3,15 +3,29 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Features - Frame Studio Animation Tool</title>
-  <meta name="description" content="Animate images online with Frame Studio. Explore the new lasso toolkit (select, erase, extend, magic detail/in-between) and drag-and-drop effects you can drop on the canvas preview or timeline frames depending on the mode. Lightweight animation with layers, onion skinning, and MP4 export.">
-  <meta name="keywords" content="animate images online, lasso selection tool, erase with lasso, extend lasso, drag and drop effects, timeline easing, animation preview effects, onion skinning, layers, timeline editor, MP4 export, lightweight animation tool">
+  <title>Tutorials - Frame Studio Animation Tool</title>
+  <meta name="description" content="Learn Frame Studio with step-by-step video tutorials. Master animation, layers, timeline, color selection, zoom, and frame management.">
+  <meta name="keywords" content="animation tutorials, Frame Studio tutorials, video tutorials, animation learning, frame by frame tutorial, onion skinning tutorial, layer tutorial, timeline tutorial">
   <meta name="author" content="Frame Studio">
   <meta name="robots" content="index, follow">
   
+  <!-- Open Graph / Facebook -->
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://studioframe.live/tutorials.html">
+  <meta property="og:title" content="Tutorials - Frame Studio Animation Tool">
+  <meta property="og:description" content="Learn Frame Studio with step-by-step video tutorials. Master animation, layers, timeline, color selection, zoom, and frame management.">
+  <meta property="og:image" content="https://studioframe.live/favicon.png">
+  <meta property="og:site_name" content="Frame Studio">
+  
+  <!-- Twitter -->
+  <meta property="twitter:card" content="summary_large_image">
+  <meta property="twitter:url" content="https://studioframe.live/tutorials.html">
+  <meta property="twitter:title" content="Tutorials - Frame Studio Animation Tool">
+  <meta property="twitter:description" content="Learn Frame Studio with step-by-step video tutorials. Master animation, layers, timeline, color selection, zoom, and frame management.">
+  <meta property="twitter:image" content="https://studioframe.live/favicon.png">
   
   <!-- Canonical URL -->
-  <link rel="canonical" href="https://framestudio.live/features.html">
+  <link rel="canonical" href="https://studioframe.live/tutorials.html">
   
   <!-- Favicon -->
   <link rel="icon" type="image/png" href="./favicon.png?v=1">
@@ -24,14 +38,14 @@
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     }
     
-    .feature-card {
+    .tutorial-card {
       background: rgba(255, 255, 255, 0.05);
       backdrop-filter: blur(10px);
       border: 1px solid rgba(255, 255, 255, 0.1);
       transition: all 0.3s ease;
     }
     
-    .feature-card:hover {
+    .tutorial-card:hover {
       background: rgba(255, 255, 255, 0.08);
       border-color: rgba(99, 102, 241, 0.3);
       transform: translateY(-2px);
@@ -55,11 +69,72 @@
       box-shadow: 0 10px 25px rgba(99, 102, 241, 0.3);
     }
     
-    .icon {
+    .video-container {
+      position: relative;
+      width: 100%;
+      height: 0;
+      padding-bottom: 56.25%; /* 16:9 aspect ratio */
+      overflow: hidden;
+      border-radius: 12px;
+      background: #000;
+    }
+    
+    .video-container video {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .play-button {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 60px;
+      height: 60px;
+      background: rgba(99, 102, 241, 0.9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+    
+    .play-button:hover {
+      background: rgba(99, 102, 241, 1);
+      transform: translate(-50%, -50%) scale(1.1);
+    }
+    
+    .play-button svg {
       width: 24px;
       height: 24px;
-      margin-right: 12px;
-      color: #6366f1;
+      color: white;
+      margin-left: 4px;
+    }
+    
+    /* Custom scrollbar styling to match index.html */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+      background: #28282e;
+    }
+    
+    ::-webkit-scrollbar-track {
+      background: #28282e;
+    }
+    
+    ::-webkit-scrollbar-thumb {
+      background: #5a5f65;
+      border-radius: 4px;
+      border: none;
+    }
+    
+    ::-webkit-scrollbar-corner {
+      background: transparent;
     }
   </style>
 </head>
@@ -83,216 +158,249 @@
   <div class="max-w-7xl mx-auto px-6 py-16">
     <div class="text-center mb-16">
       <h1 class="text-5xl font-bold text-white mb-6">
-        Frame Studio <span class="gradient-text">Features</span>
+        Frame Studio <span class="gradient-text">Tutorials</span>
       </h1>
       <p class="text-xl text-gray-300 max-w-3xl mx-auto">
-        Frame Studio is a <strong class="text-white">free online animation tool</strong> for creating professional 2D animations, pixel art, and sprite animations directly in your browser.
+        Master Frame Studio with our comprehensive video tutorials. Learn everything from basic drawing to advanced animation techniques.
       </p>
     </div>
 
-    <!-- Features Grid -->
-    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8 mb-16">
+    <!-- Tutorials Grid -->
+    <div class="grid lg:grid-cols-2 gap-8 mb-16">
       
-      <!-- Professional Drawing Tools -->
-      <div class="feature-card rounded-xl p-6">
-        <div class="flex items-center mb-4">
-          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/>
-          </svg>
-          <h2 class="text-xl font-bold text-white">🎨 Professional Drawing Tools</h2>
+      <!-- Animation Frames Tutorial -->
+      <div class="tutorial-card rounded-xl p-6">
+        <div class="mb-4">
+          <h2 class="text-2xl font-bold text-white mb-2">🎬 Animation Frames</h2>
+          <p class="text-gray-300">Learn how to create and manage animation frames for smooth motion.</p>
         </div>
-        <ul class="space-y-2 text-gray-300">
-          <li><strong class="text-white">Brush Tool</strong> - Smooth, variable-size brushes with opacity control</li>
-          <li><strong class="text-white">Pencil Tool</strong> - Precision drawing for pixel-perfect artwork</li>
-          <li><strong class="text-white">Eraser</strong> - Clean up mistakes with adjustable eraser sizes</li>
-          <li><strong class="text-white">Fill Tool</strong> - Instant color fills for faster workflow</li>
-          <li><strong class="text-white">Lasso Selection</strong> - Select and erase custom shapes</li>
-        </ul>
+        <div class="video-container mb-4">
+          <video id="animationframes-video" preload="metadata">
+            <source src="toturialvids/animationframes.mov" type="video/quicktime">
+            Your browser does not support the video tag.
+          </video>
+          <div class="play-button" onclick="toggleVideo('animationframes-video')">
+            <svg fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="space-y-2 text-sm text-gray-300">
+          <p><strong class="text-white">What you'll learn:</strong></p>
+          <ul class="list-disc list-inside space-y-1 ml-4">
+            <li>Creating new animation frames</li>
+            <li>Frame sequencing and timing</li>
+            <li>Frame duplication techniques</li>
+            <li>Managing frame order</li>
+          </ul>
+        </div>
       </div>
 
-      <!-- Lasso Toolkit -->
-      <div class="feature-card rounded-xl p-6">
-        <div class="flex items-center mb-4">
-          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7c2-2 4-2 6 0s4 2 6 0 4-2 6 0v10c-2 2-4 2-6 0s-4-2-6 0-4 2-6 0V7z"/>
-          </svg>
-          <h2 class="text-xl font-bold text-white">🧲 Lasso Toolkit</h2>
+      <!-- Timeline Frames Tutorial -->
+      <div class="tutorial-card rounded-xl p-6">
+        <div class="mb-4">
+          <h2 class="text-2xl font-bold text-white mb-2">⏱️ Timeline Frames</h2>
+          <p class="text-gray-300">Master the timeline editor for precise frame control and animation timing.</p>
         </div>
-        <ul class="space-y-2 text-gray-300">
-          <li><strong class="text-white">Select Lasso</strong> - Freeform select, move, or scale parts of your drawing without touching other pixels.</li>
-          <li><strong class="text-white">Eraser Lasso</strong> - Draw a lasso and clear everything inside in one gesture.</li>
-          <li><strong class="text-white">Extend Lasso</strong> - Grow the selected area outward to fill gaps or stretch paint into the lasso shape.</li>
-          <li><strong class="text-white">Magic Lassos</strong> - Detail and in-between lassos that add smart fills and motion helpers when you release.</li>
-        </ul>
+        <div class="video-container mb-4">
+          <video id="timelineframes-video" preload="metadata">
+            <source src="toturialvids/timelineframes.mov" type="video/quicktime">
+            Your browser does not support the video tag.
+          </video>
+          <div class="play-button" onclick="toggleVideo('timelineframes-video')">
+            <svg fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="space-y-2 text-sm text-gray-300">
+          <p><strong class="text-white">What you'll learn:</strong></p>
+          <ul class="list-disc list-inside space-y-1 ml-4">
+            <li>Timeline navigation and controls</li>
+            <li>Frame duration adjustment</li>
+            <li>Playback speed control</li>
+            <li>Timeline scrubbing techniques</li>
+          </ul>
+        </div>
       </div>
 
-      <!-- Animation Features -->
-      <div class="feature-card rounded-xl p-6">
-        <div class="flex items-center mb-4">
-          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          <h2 class="text-xl font-bold text-white">🎬 Animation Features</h2>
+      <!-- Layers Tutorial -->
+      <div class="tutorial-card rounded-xl p-6">
+        <div class="mb-4">
+          <h2 class="text-2xl font-bold text-white mb-2">📚 Layers</h2>
+          <p class="text-gray-300">Organize your animation with multiple layers for complex scenes.</p>
         </div>
-        <ul class="space-y-2 text-gray-300">
-          <li><strong class="text-white">6 Frames</strong> - Perfect for short looping animations</li>
-          <li><strong class="text-white">Onion Skinning</strong> - See previous frames while drawing for smooth motion</li>
-          <li><strong class="text-white">Timeline Editor</strong> - Control frame duration with draggable ribs</li>
-          <li><strong class="text-white">Frame Duplication</strong> - Speed up workflow by copying frames</li>
-          <li><strong class="text-white">Custom Frame Rates</strong> - Adjust FPS from 1 to 60</li>
-        </ul>
+        <div class="video-container mb-4">
+          <video id="layers-video" preload="metadata">
+            <source src="toturialvids/layers.mov" type="video/quicktime">
+            Your browser does not support the video tag.
+          </video>
+          <div class="play-button" onclick="toggleVideo('layers-video')">
+            <svg fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="space-y-2 text-sm text-gray-300">
+          <p><strong class="text-white">What you'll learn:</strong></p>
+          <ul class="list-disc list-inside space-y-1 ml-4">
+            <li>Creating and managing layers</li>
+            <li>Layer visibility controls</li>
+            <li>Layer ordering and organization</li>
+            <li>Independent layer animation</li>
+          </ul>
+        </div>
       </div>
 
-      <!-- Magic Effects & Timeline -->
-      <div class="feature-card rounded-xl p-6">
-        <div class="flex items-center mb-4">
-          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12l4 4L19 7"/>
-          </svg>
-          <h2 class="text-xl font-bold text-white">✨ Drag-and-Drop Effects</h2>
+      <!-- Color Selector Tutorial -->
+      <div class="tutorial-card rounded-xl p-6">
+        <div class="mb-4">
+          <h2 class="text-2xl font-bold text-white mb-2">🎨 Color Selector</h2>
+          <p class="text-gray-300">Master color selection and palette management for vibrant animations.</p>
         </div>
-        <ul class="space-y-2 text-gray-300">
-          <li><strong class="text-white">Canvas Effects</strong> - Drag Heat Haze, Smear Frames, Echo Trail, Squash &amp; Stretch, Frame Blend (and Pro-only Between Frames, Bounce Ease) onto the Animation Preview to preview and stack looks.</li>
-          <li><strong class="text-white">Timeline Effects</strong> - Drag Auto‑pace by Motion, Keypose Holds, Ease In/Out/In‑Out, Linear Reset, Slow Down, or Acceleration onto timeline frames/clips to change timing.</li>
-          <li><strong class="text-white">Mode-aware</strong> - In Cut Out mode the same drag-and-drop works on timeline clips; in Draw mode drops land on the preview canvas. Locked badges indicate Pro-only effects.</li>
-        </ul>
+        <div class="video-container mb-4">
+          <video id="colorselector-video" preload="metadata">
+            <source src="toturialvids/colorselector.mov" type="video/quicktime">
+            Your browser does not support the video tag.
+          </video>
+          <div class="play-button" onclick="toggleVideo('colorselector-video')">
+            <svg fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="space-y-2 text-sm text-gray-300">
+          <p><strong class="text-white">What you'll learn:</strong></p>
+          <ul class="list-disc list-inside space-y-1 ml-4">
+            <li>Color palette navigation</li>
+            <li>Custom color creation</li>
+            <li>Color picker usage</li>
+            <li>Palette organization</li>
+          </ul>
+        </div>
       </div>
 
-      <!-- Layer System -->
-      <div class="feature-card rounded-xl p-6">
-        <div class="flex items-center mb-4">
-          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"/>
-          </svg>
-          <h2 class="text-xl font-bold text-white">📐 Layer System</h2>
+      <!-- Zoom Tutorial -->
+      <div class="tutorial-card rounded-xl p-6">
+        <div class="mb-4">
+          <h2 class="text-2xl font-bold text-white mb-2">🔍 Zoom</h2>
+          <p class="text-gray-300">Learn precision zooming techniques for detailed work and pixel-perfect animations.</p>
         </div>
-        <ul class="space-y-2 text-gray-300">
-          <li><strong class="text-white">Multiple Layers</strong> - Organize complex animations</li>
-          <li><strong class="text-white">Layer Visibility</strong> - Show/hide layers independently</li>
-          <li><strong class="text-white">Layer Preview</strong> - Preview individual layer animations</li>
-          <li><strong class="text-white">Independent Animation</strong> - Each layer animates separately</li>
-        </ul>
+        <div class="video-container mb-4">
+          <video id="zoomin-video" preload="metadata">
+            <source src="toturialvids/zoomin.mov" type="video/quicktime">
+            Your browser does not support the video tag.
+          </video>
+          <div class="play-button" onclick="toggleVideo('zoomin-video')">
+            <svg fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="space-y-2 text-sm text-gray-300">
+          <p><strong class="text-white">What you'll learn:</strong></p>
+          <ul class="list-disc list-inside space-y-1 ml-4">
+            <li>Mouse wheel zooming</li>
+            <li>Zoom level controls</li>
+            <li>Precision drawing techniques</li>
+            <li>Navigation while zoomed</li>
+          </ul>
+        </div>
       </div>
 
-      <!-- Responsive Design -->
-      <div class="feature-card rounded-xl p-6">
-        <div class="flex items-center mb-4">
-          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z"/>
-          </svg>
-          <h2 class="text-xl font-bold text-white">📱 Responsive Design</h2>
+      <!-- Lasso Eraser Tutorial -->
+      <div class="tutorial-card rounded-xl p-6">
+        <div class="mb-4">
+          <h2 class="text-2xl font-bold text-white mb-2">✂️ Lasso Eraser</h2>
+          <p class="text-gray-300">Master the lasso eraser tool for precise selection and deletion.</p>
         </div>
-        <ul class="space-y-2 text-gray-300">
-          <li><strong class="text-white">Desktop Mode</strong> - 16:9 landscape format</li>
-          <li><strong class="text-white">Phone Mode</strong> - 9:16 portrait format</li>
-          <li><strong class="text-white">Touch Support</strong> - Works on tablets and mobile devices</li>
-          <li><strong class="text-white">Zoom Control</strong> - Mouse wheel zoom for precision work</li>
-        </ul>
+        <div class="video-container mb-4">
+          <video id="lassoerzer-video" preload="metadata">
+            <source src="toturialvids/lassoerazer.mov" type="video/quicktime">
+            Your browser does not support the video tag.
+          </video>
+          <div class="play-button" onclick="toggleVideo('lassoerzer-video')">
+            <svg fill="currentColor" viewBox="0 0 24 24">
+              <path d="M8 5v14l11-7z"/>
+            </svg>
+          </div>
+        </div>
+        <div class="space-y-2 text-sm text-gray-300">
+          <p><strong class="text-white">What you'll learn:</strong></p>
+          <ul class="list-disc list-inside space-y-1 ml-4">
+            <li>Lasso selection techniques</li>
+            <li>Precise area selection</li>
+            <li>Eraser tool usage</li>
+            <li>Custom shape deletion</li>
+          </ul>
+        </div>
       </div>
 
-      <!-- Export Options -->
-      <div class="feature-card rounded-xl p-6">
-        <div class="flex items-center mb-4">
-          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-          </svg>
-          <h2 class="text-xl font-bold text-white">💾 Export Options</h2>
+      <!-- Getting Started Tutorial -->
+      <div class="tutorial-card rounded-xl p-6">
+        <div class="mb-4">
+          <h2 class="text-2xl font-bold text-white mb-2">🚀 Getting Started</h2>
+          <p class="text-gray-300">Complete beginner's guide to Frame Studio animation software.</p>
         </div>
-        <ul class="space-y-2 text-gray-300">
-          <li><strong class="text-white">MP4 Video Export</strong> - High-quality video output</li>
-          <li><strong class="text-white">No Watermarks</strong> - Your work stays yours</li>
-          <li><strong class="text-white">Custom Frame Rates</strong> - Control playback speed</li>
-          <li><strong class="text-white">Completely Free</strong> - No hidden costs or limitations</li>
-        </ul>
-      </div>
-
-      <!-- Keyboard Shortcuts -->
-      <div class="feature-card rounded-xl p-6">
-        <div class="flex items-center mb-4">
-          <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-          </svg>
-          <h2 class="text-xl font-bold text-white">⌨️ Keyboard Shortcuts</h2>
+        <div class="bg-gradient-to-r from-purple-900/20 to-blue-900/20 rounded-lg p-6 border border-purple-500/20">
+          <div class="flex items-center mb-4">
+            <div class="w-12 h-12 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mr-4">
+              <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+            </div>
+            <div>
+              <h3 class="text-lg font-semibold text-white">Quick Start Guide</h3>
+              <p class="text-gray-300 text-sm">Perfect for beginners</p>
+            </div>
+          </div>
+          <div class="space-y-2 text-sm text-gray-300">
+            <p><strong class="text-white">What you'll learn:</strong></p>
+            <ul class="list-disc list-inside space-y-1 ml-4">
+              <li>Interface overview and navigation</li>
+              <li>Basic drawing tools</li>
+              <li>Creating your first animation</li>
+              <li>Exporting your work</li>
+            </ul>
+          </div>
         </div>
-        <ul class="space-y-2 text-gray-300">
-          <li><strong class="text-white">B</strong> - Brush tool</li>
-          <li><strong class="text-white">P</strong> - Pencil tool</li>
-          <li><strong class="text-white">E</strong> - Eraser tool</li>
-          <li><strong class="text-white">F</strong> - Fill tool</li>
-          <li><strong class="text-white">L</strong> - Lasso tool</li>
-          <li><strong class="text-white">Arrow Keys</strong> - Navigate between frames</li>
-          <li><strong class="text-white">Space</strong> - Play/pause animation</li>
-          <li><strong class="text-white">Ctrl+Z/Y</strong> - Undo/redo</li>
-        </ul>
       </div>
     </div>
 
-    <!-- Why Choose Frame Studio -->
+    <!-- Learning Path Section -->
     <div class="bg-gradient-to-r from-purple-900/20 to-blue-900/20 rounded-2xl p-8 mb-16 border border-purple-500/20">
-      <h2 class="text-3xl font-bold text-white mb-6 text-center">Why Choose Frame Studio?</h2>
-      <p class="text-lg text-gray-300 mb-8 text-center max-w-4xl mx-auto">
-        Unlike expensive desktop software, Frame Studio runs entirely in your web browser. No downloads, no installation, no subscriptions. Just open the page and start creating.
-      </p>
-      
-      <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <h2 class="text-3xl font-bold text-white mb-6 text-center">🎯 Recommended Learning Path</h2>
+      <div class="grid md:grid-cols-4 gap-6">
         <div class="text-center">
           <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
-            </svg>
+            <span class="text-2xl font-bold text-white">1</span>
           </div>
-          <h3 class="text-lg font-semibold text-white mb-2">Game Developers</h3>
-          <p class="text-gray-300">Creating sprite animations</p>
+          <h3 class="text-lg font-semibold text-white mb-2">Start Here</h3>
+          <p class="text-gray-300 text-sm">Getting Started tutorial</p>
         </div>
         
         <div class="text-center">
           <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-            </svg>
+            <span class="text-2xl font-bold text-white">2</span>
           </div>
-          <h3 class="text-lg font-semibold text-white mb-2">Digital Artists</h3>
-          <p class="text-gray-300">Making animated GIFs</p>
+          <h3 class="text-lg font-semibold text-white mb-2">Learn Basics</h3>
+          <p class="text-gray-300 text-sm">Animation Frames & Timeline</p>
         </div>
         
         <div class="text-center">
           <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 0h10m-10 0a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2M9 8h6m-6 4h6m-6 4h6"/>
-            </svg>
+            <span class="text-2xl font-bold text-white">3</span>
           </div>
-          <h3 class="text-lg font-semibold text-white mb-2">Pixel Art Enthusiasts</h3>
-          <p class="text-gray-300">Creating pixel-perfect animations</p>
+          <h3 class="text-lg font-semibold text-white mb-2">Master Tools</h3>
+          <p class="text-gray-300 text-sm">Layers, Colors & Lasso</p>
         </div>
         
         <div class="text-center">
           <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 4V2a1 1 0 011-1h8a1 1 0 011 1v2m-9 0h10m-10 0a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V6a2 2 0 00-2-2M9 8h6m-6 4h6m-6 4h6"/>
-            </svg>
+            <span class="text-2xl font-bold text-white">4</span>
           </div>
-          <h3 class="text-lg font-semibold text-white mb-2">Content Creators</h3>
-          <p class="text-gray-300">Social media animations</p>
-        </div>
-        
-        <div class="text-center">
-          <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/>
-            </svg>
-          </div>
-          <h3 class="text-lg font-semibold text-white mb-2">Students</h3>
-          <p class="text-gray-300">Learning animation</p>
-        </div>
-        
-        <div class="text-center">
-          <div class="w-16 h-16 bg-gradient-to-r from-purple-500 to-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
-            </svg>
-          </div>
-          <h3 class="text-lg font-semibold text-white mb-2">Professionals</h3>
-          <p class="text-gray-300">Quick prototyping</p>
+          <h3 class="text-lg font-semibold text-white mb-2">Precision Work</h3>
+          <p class="text-gray-300 text-sm">Zoom & Advanced Techniques</p>
         </div>
       </div>
     </div>
@@ -300,7 +408,7 @@
     <!-- CTA Section -->
     <div class="text-center">
       <a href="/" class="btn-primary text-white px-8 py-4 rounded-lg font-medium text-lg inline-block">
-        Start Animating Now →
+        Start Creating Animations →
       </a>
     </div>
   </div>
@@ -318,6 +426,31 @@
       </div>
     </div>
   </div>
+
+  <script>
+    function toggleVideo(videoId) {
+      const video = document.getElementById(videoId);
+      const playButton = video.nextElementSibling;
+      
+      if (video.paused) {
+        video.play();
+        playButton.style.display = 'none';
+      } else {
+        video.pause();
+        playButton.style.display = 'flex';
+      }
+    }
+    
+    // Hide play button when video starts playing
+    document.querySelectorAll('video').forEach(video => {
+      video.addEventListener('play', function() {
+        this.nextElementSibling.style.display = 'none';
+      });
+      
+      video.addEventListener('pause', function() {
+        this.nextElementSibling.style.display = 'flex';
+      });
+    });
+  </script>
 </body>
 </html>
-
