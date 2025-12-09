@@ -286,6 +286,12 @@
       z-index: 998;
     }
 
+    /* Cut Out mobile drawers & toggles (hidden by default) */
+    .cutout-mobile-toggle,
+    .cutout-mobile-panel {
+      display: none;
+    }
+
     .overlay.active {
       display: block;
     }
@@ -376,10 +382,253 @@
         justify-content: center;
       }
       
+      /* Cut Out mobile-specific toggles (shown only in cutout-mobile-mode) */
+      .cutout-mobile-toggle {
+        display: none;
+        position: fixed;
+        z-index: 1000;
+        background: #1a1a1a;
+        border: 2px solid #2a2a2a;
+        border-radius: 8px;
+        padding: 12px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+      }
+
+      body.cutout-mobile-mode .cutout-mobile-toggle {
+        display: flex;
+      }
+
+      .cutout-mobile-toggle:active {
+        transform: scale(0.96);
+      }
+
+      .cutout-mobile-left-toggle {
+        top: 136px;
+        left: 10px;
+      }
+
+      .cutout-mobile-right-toggle {
+        top: 136px;
+        right: 10px;
+      }
+
+      /* Sliding drawers for Cut Out mode on phones */
+      .cutout-mobile-panel {
+        position: fixed;
+        top: 0;
+        bottom: 0;
+        width: 280px;
+        max-width: 85vw;
+        background: #0f1116;
+        border: 1px solid #2a2a2a;
+        border-radius: 0;
+        z-index: 1001;
+        transition: transform 0.3s ease;
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.55);
+        flex-direction: column;
+      }
+
+      body.cutout-mobile-mode .cutout-mobile-panel {
+        display: flex;
+      }
+
+      .cutout-mobile-panel-left {
+        left: 0;
+        transform: translateX(-100%);
+        border-right: 1px solid #2a2a2a;
+      }
+
+      .cutout-mobile-panel-right {
+        right: 0;
+        transform: translateX(100%);
+        border-left: 1px solid #2a2a2a;
+      }
+
+      .cutout-mobile-panel.open {
+        transform: translateX(0);
+      }
+
+      .cutout-mobile-panel-header {
+        padding: 14px 16px 10px;
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #e5e7eb;
+        border-bottom: 1px solid #2a2a2a;
+        text-align: center;
+      }
+
+      .cutout-mobile-panel-body {
+        padding: 12px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+
+      /* Normalize cutout panels when docked in drawers */
+      #cutout-mobile-right-panel #cutout-transform-panel {
+        position: static !important;
+        width: 100% !important;
+        right: auto !important;
+        top: auto !important;
+        align-items: stretch !important;
+        background: transparent;
+      }
+
+      #cutout-mobile-right-panel #cutout-transform-panel > div {
+        width: 100%;
+      }
+
+      #cutout-mobile-left-panel #cutout-picture-board {
+        position: static !important;
+        width: 100% !important;
+        left: auto !important;
+        top: auto !important;
+      }
+
+      /* Picture Board header actions */
+      #cutout-picture-board .cutout-board-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        width: 100%;
+        position: relative;
+      }
+
+      #cutout-picture-board .cutout-board-title {
+        flex: 1;
+        text-align: center;
+      }
+
+      #cutout-board-upload-btn {
+        display: flex;
+        width: 22px;
+        height: 22px;
+        border-radius: 6px;
+        background: #111;
+        border: 1px solid #3b3b3b;
+        color: #9ca3af;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        flex-shrink: 0;
+      }
+
+      #cutout-board-upload-btn:hover {
+        background: #1b1b24;
+        border-color: #6366f1;
+        color: #ffffff;
+      }
+
+      #cutout-board-upload-btn:active {
+        transform: scale(0.95);
+      }
+
+      #cutout-board-upload-btn svg {
+        pointer-events: none;
+      }
+
+      body.cutout-mobile-mode #cutout-board-upload-btn {
+        display: flex;
+      }
+
+      /* Mobile drag ghost for Picture Board */
+      #cutout-board-drag-ghost {
+        position: fixed;
+        width: 34px;
+        height: 34px;
+        border-radius: 9999px;
+        background: rgba(99, 102, 241, 0.92);
+        border: 1px solid #a5b4fc;
+        color: white;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+        pointer-events: none;
+        z-index: 2000;
+      }
+
+      /* Improve Cut Out sliders on phones */
+      #cutout-rot-track,
+      #cutout-opa-track {
+        touch-action: none;
+      }
+
+      body.cutout-mobile-mode #cutout-rotbar,
+      body.cutout-mobile-mode #cutout-opabar {
+        width: 60%;
+        justify-content: space-between;
+        gap: 8px;
+      }
+
+      body.cutout-mobile-mode #cutout-rot-track,
+      body.cutout-mobile-mode #cutout-opa-track {
+        width: 60%;
+        min-width: 60px;
+        max-width: 100px;
+      }
+
+      body.cutout-mobile-mode #cutout-rot-value,
+      body.cutout-mobile-mode #cutout-opa-value {
+        min-width: 72px;
+      }
+
       /* Ensure phone dimension canvases fill height properly */
       .canvas-container {
         min-height: 400px;
       }
+    }
+
+    /* Desktop Picture Board header styles */
+    #cutout-picture-board .cutout-board-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      width: 100%;
+    }
+
+    #cutout-picture-board .cutout-board-title {
+      flex: 1;
+      text-align: center;
+    }
+
+    #cutout-board-upload-btn {
+      display: flex;
+      width: 22px;
+      height: 22px;
+      border-radius: 6px;
+      background: #111;
+      border: 1px solid #3b3b3b;
+      color: #9ca3af;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+
+    #cutout-board-upload-btn:hover {
+      background: #1b1b24;
+      border-color: #6366f1;
+      color: #ffffff;
+    }
+
+    #cutout-board-upload-btn:active {
+      transform: scale(0.95);
+    }
+
+    #cutout-board-upload-btn svg {
+      pointer-events: none;
     }
 
     /* Improved border visibility with better box model */
@@ -1284,8 +1533,35 @@
     </svg>
   </button>
 
+  <!-- Cut Out mobile toggles (phone only) -->
+  <button class="menu-toggle cutout-mobile-toggle cutout-mobile-left-toggle" onclick="toggleCutoutMobilePanel('left')" aria-label="Toggle Cut Out picture board & layers">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <rect x="3" y="5" width="18" height="14" rx="2" ry="2"></rect>
+      <rect x="6.5" y="8" width="6" height="6" rx="1" ry="1"></rect>
+      <path d="M14 8h4M14 12h2"></path>
+    </svg>
+  </button>
+
+  <button class="menu-toggle cutout-mobile-toggle cutout-mobile-right-toggle" onclick="toggleCutoutMobilePanel('right')" aria-label="Toggle Cut Out transform tools & objects">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <circle cx="12" cy="12" r="2.6"></circle>
+      <path d="M12 2v5M12 17v5M2 12h5M17 12h5M5.5 5.5l3.1 3.1M15.4 15.4l3.1 3.1M18.5 5.5l-3.1 3.1M5.5 18.5l3.1-3.1"></path>
+    </svg>
+  </button>
+
   <!-- Added overlay for mobile sidebar -->
   <div class="overlay" id="sidebar-overlay" onclick="closeSidebars()"></div>
+
+  <!-- Cut Out mobile drawers -->
+  <div class="cutout-mobile-panel cutout-mobile-panel-left" id="cutout-mobile-left-panel" aria-label="Cut Out Picture Board and Layers">
+    <div class="cutout-mobile-panel-header">Picture Board &amp; Layers</div>
+    <div class="cutout-mobile-panel-body" id="cutout-mobile-left-body"></div>
+  </div>
+
+  <div class="cutout-mobile-panel cutout-mobile-panel-right" id="cutout-mobile-right-panel" aria-label="Cut Out Transform Tools and Objects">
+    <div class="cutout-mobile-panel-header">Transform &amp; Objects</div>
+    <div class="cutout-mobile-panel-body" id="cutout-mobile-right-body"></div>
+  </div>
 
   <div class="flex flex-col h-screen">
     <!-- Top Toolbar -->
@@ -2318,8 +2594,18 @@
                   </div>
                 </div>
                 <!-- Picture Board (left side) -->
-                <div id="cutout-picture-board" style="position:absolute; left:12px; top:48px; width:300px; display:flex; flex-direction:column; gap:10px; z-index:5;">
-                  <div style="color:#9ca3af; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; text-align:center;">Picture Board</div>
+                <div id="cutout-picture-board" style="position:absolute; left:12px; top:56px; width:300px; display:flex; flex-direction:column; gap:12px; z-index:5;">
+                  <div class="cutout-board-header">
+                    <div style="width:22px; height:22px; border-radius:6px; border:1px solid transparent; background:transparent; pointer-events:none; flex-shrink:0;"></div>
+                    <div class="cutout-board-title" style="color:#9ca3af; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; text-align:center; flex:1;">Picture Board</div>
+                    <button id="cutout-board-upload-btn" type="button" aria-label="Upload images to Picture Board">
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="9"></circle>
+                        <path d="M12 8v8M8 12h8"></path>
+                      </svg>
+                    </button>
+                    <input id="cutout-board-file-input" type="file" accept="image/*" multiple style="display:none;" />
+                  </div>
                   <div style="width:100%; height:1px; background:#2a2a2a;"></div>
                   <div id="cutout-board-body" style="height:188px; border:1px solid #2a2a2a; border-radius:10px; background:#0b0b0b; position:relative; overflow:auto;">
                     <div id="cutout-board-placeholder" style="position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#9ca3af; font-size:12px; pointer-events:none;">
@@ -2333,27 +2619,27 @@
                   <button id="cutout-rec-btn" title="Record / Pause" style="width:18px; height:18px; border-radius:50%; background:#6b7280; border:2px solid #3b3b3b; box-shadow:0 0 6px rgba(0,0,0,0.35); cursor:pointer;"></button>
                   <div id="cutout-rec-time" title="Drag to scrub time" style="min-width:90px; padding:2px 6px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace; font-size:13px; color:#e5e7eb; background:#111; border:1px solid #2a2a2a; border-radius:4px; text-align:center; cursor:ew-resize;">00:00:00</div>
                 </div>
-                <!-- Transform Tool panel (right side, aligned with canvas top) -->
-                <div id="cutout-transform-panel" style="position:absolute; right:12px; display:flex; flex-direction:column; gap:12px; align-items:flex-end; background:transparent;">
+                <!-- Transform Tool panel (right side) -->
+                <div id="cutout-transform-panel" style="position:absolute; right:12px; top:56px; display:flex; flex-direction:column; gap:12px; align-items:flex-end; background:transparent; z-index:5;">
                   <div style="color:#9ca3af; font-size:11px; font-weight:600; letter-spacing:0.08em; text-transform:uppercase; width:100%; text-align:center;">Transform Tools</div>
                   <div style="width:100%; height:1px; background:#2a2a2a;"></div>
                   <!-- Position row -->
+                  <div style="width:100%; text-align:center; color:#d1d5db; font-size:12px; font-weight:600;">Position</div>
                   <div id="cutout-posbar" style="display:flex; align-items:center; gap:8px; width:100%; justify-content:flex-end;">
-                    <div style="color:#d1d5db; font-size:12px;">Position</div>
                     <div style="color:#d1d5db; font-size:12px;">X</div>
                     <div id="cutout-pos-x" style="min-width:86px; padding:4px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size:14px; color:#e5e7eb; background:#000000; border:1px solid #111; border-radius:4px; text-align:right; cursor:ew-resize;">00.000</div>
                     <div style="color:#d1d5db; font-size:12px; margin-left:8px;">Y</div>
                     <div id="cutout-pos-y" style="min-width:86px; margin-left:auto; padding:4px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size:14px; color:#e5e7eb; background:#000000; border:1px solid #111; border-radius:4px; text-align:right; cursor:ew-resize;">00.000</div>
-                    <div id="cutout-pos-key" title="Key Position" style="width:10px; height:10px; margin-left:8px; background:#6b7280; transform:rotate(45deg); cursor:pointer; border:1px solid #3b3b3b;" onclick="togglePropertyKey('position')"></div>
+                    <div id="cutout-pos-key" title="Key Position" style="width:12px; height:12px; margin-left:8px; background:#6b7280; transform:rotate(45deg); cursor:pointer; border:1px solid #3b3b3b; flex-shrink:0;" onclick="togglePropertyKey('position')"></div>
                   </div>
                   <!-- Zoom row -->
+                  <div style="width:100%; text-align:center; color:#d1d5db; font-size:12px; font-weight:600; margin-top:6px;">Zoom</div>
                   <div id="cutout-zoombar" style="display:flex; align-items:center; gap:8px; width:100%; justify-content:flex-end;">
-                    <div style="color:#d1d5db; font-size:12px;">Zoom</div>
                     <div style="color:#d1d5db; font-size:12px;">X</div>
                     <div id="cutout-zoom-x" style="min-width:86px; padding:4px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size:14px; color:#e5e7eb; background:#000000; border:1px solid #111; border-radius:4px; text-align:right; cursor:ew-resize;">1.000</div>
                     <div style="color:#d1d5db; font-size:12px; margin-left:8px;">Y</div>
                     <div id="cutout-zoom-y" style="min-width:86px; margin-left:auto; padding:4px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size:14px; color:#e5e7eb; background:#000000; border:1px solid #111; border-radius:4px; text-align:right; cursor:ew-resize;">1.000</div>
-                    <div id="cutout-zoom-key" title="Key Zoom" style="width:10px; height:10px; margin-left:8px; background:#6b7280; transform:rotate(45deg); cursor:pointer; border:1px solid #3b3b3b;" onclick="togglePropertyKey('zoom')"></div>
+                    <div id="cutout-zoom-key" title="Key Zoom" style="width:12px; height:12px; margin-left:8px; background:#6b7280; transform:rotate(45deg); cursor:pointer; border:1px solid #3b3b3b; flex-shrink:0;" onclick="togglePropertyKey('zoom')"></div>
                   </div>
                   <!-- Rotation row -->
                   <div id="cutout-rotbar" style="display:flex; align-items:center; gap:12px; width:100%; justify-content:flex-end;">
@@ -2362,7 +2648,7 @@
                       <div id="cutout-rot-knob" style="position:absolute; top:50%; left:50%; transform:translate(-50%, -50%); width:14px; height:14px; background:#9ca3af; border:2px solid #3b3b3b; border-radius:50%; pointer-events:none;"></div>
                     </div>
                     <div id="cutout-rot-value" style="min-width:86px; margin-left:auto; padding:4px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size:14px; color:#e5e7eb; background:#000000; border:1px solid #111; border-radius:4px; text-align:right;">0.000</div>
-                    <div id="cutout-rot-key" title="Key Rotation" style="width:10px; height:10px; margin-left:8px; background:#6b7280; transform:rotate(45deg); cursor:pointer; border:1px solid #3b3b3b;" onclick="togglePropertyKey('rotation')"></div>
+                    <div id="cutout-rot-key" title="Key Rotation" style="width:12px; height:12px; margin-left:8px; background:#6b7280; transform:rotate(45deg); cursor:pointer; border:1px solid #3b3b3b; flex-shrink:0;" onclick="togglePropertyKey('rotation')"></div>
                   </div>
                   <!-- Opacity row -->
                   <div id="cutout-opabar" style="display:flex; align-items:center; gap:12px; width:100%; justify-content:flex-end;">
@@ -2371,7 +2657,7 @@
                       <div id="cutout-opa-knob" style="position:absolute; top:50%; left:100%; transform:translate(-50%, -50%); width:14px; height:14px; background:#9ca3af; border:2px solid #3b3b3b; border-radius:50%; pointer-events:none;"></div>
                     </div>
                     <div id="cutout-opa-value" style="min-width:86px; margin-left:auto; padding:4px 8px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace; font-size:14px; color:#e5e7eb; background:#000000; border:1px solid #111; border-radius:4px; text-align:right;">1.000</div>
-                    <div id="cutout-opa-key" title="Key Opacity" style="width:10px; height:10px; margin-left:8px; background:#6b7280; transform:rotate(45deg); cursor:pointer; border:1px solid #3b3b3b;" onclick="togglePropertyKey('opacity')"></div>
+                    <div id="cutout-opa-key" title="Key Opacity" style="width:12px; height:12px; margin-left:8px; background:#6b7280; transform:rotate(45deg); cursor:pointer; border:1px solid #3b3b3b; flex-shrink:0;" onclick="togglePropertyKey('opacity')"></div>
                   </div>
                 </div>
               </div>
@@ -2846,6 +3132,9 @@
 
     // Cut Out Mode state (separate mode)
     let isCutOutMode = false;
+    let cutoutTransformPlaceholder = null;
+    let cutoutPictureBoardPlaceholder = null;
+    let cutoutPhoneMediaQuery = (typeof window !== 'undefined' && window.matchMedia) ? window.matchMedia('(max-width: 768px)') : null;
     let cutoutCanvas = null;
     let cutoutCtx = null;
     let cutoutFillCanvas = null;
@@ -3031,6 +3320,7 @@
       if (resized && typeof renderCutoutPreviewForTime === 'function') {
         try { renderCutoutPreviewForTime(); } catch (_e) {}
       }
+      refreshCutoutSliderUi();
     }
 
     // Ensure all clip canvases match cutoutCanvas dimensions, rescaling content if needed
@@ -3083,6 +3373,117 @@
       }
     }
 
+    function ensureCutoutMobilePlaceholders() {
+      const transformPanel = document.getElementById('cutout-transform-panel');
+      if (transformPanel && !cutoutTransformPlaceholder && transformPanel.parentElement) {
+        cutoutTransformPlaceholder = document.createElement('div');
+        cutoutTransformPlaceholder.id = 'cutout-transform-placeholder';
+        cutoutTransformPlaceholder.style.display = 'none';
+        if (!transformPanel.dataset.originalStyle) {
+          transformPanel.dataset.originalStyle = transformPanel.getAttribute('style') || '';
+        }
+        transformPanel.parentElement.insertBefore(cutoutTransformPlaceholder, transformPanel);
+      }
+      const pictureBoard = document.getElementById('cutout-picture-board');
+      if (pictureBoard && !cutoutPictureBoardPlaceholder && pictureBoard.parentElement) {
+        cutoutPictureBoardPlaceholder = document.createElement('div');
+        cutoutPictureBoardPlaceholder.id = 'cutout-picture-board-placeholder';
+        cutoutPictureBoardPlaceholder.style.display = 'none';
+        if (!pictureBoard.dataset.originalStyle) {
+          pictureBoard.dataset.originalStyle = pictureBoard.getAttribute('style') || '';
+        }
+        pictureBoard.parentElement.insertBefore(cutoutPictureBoardPlaceholder, pictureBoard);
+      }
+    }
+
+    function moveCutoutPanelsToMobile() {
+      if (!isCutOutMode || !isPhoneViewport()) return;
+      ensureCutoutMobilePlaceholders();
+      const rightHost = document.getElementById('cutout-mobile-right-body');
+      const leftHost = document.getElementById('cutout-mobile-left-body');
+      const transformPanel = document.getElementById('cutout-transform-panel');
+      if (transformPanel && rightHost && transformPanel.parentElement !== rightHost) {
+        transformPanel.style.position = 'relative';
+        transformPanel.style.right = '0';
+        transformPanel.style.top = '0';
+        transformPanel.style.alignItems = 'stretch';
+        transformPanel.style.width = '100%';
+        rightHost.appendChild(transformPanel);
+      }
+      const pictureBoard = document.getElementById('cutout-picture-board');
+      if (pictureBoard && leftHost && pictureBoard.parentElement !== leftHost) {
+        pictureBoard.style.position = 'relative';
+        pictureBoard.style.left = '0';
+        pictureBoard.style.top = '0';
+        pictureBoard.style.width = '100%';
+        pictureBoard.style.zIndex = '1';
+        leftHost.appendChild(pictureBoard);
+      }
+      document.body.classList.add('cutout-mobile-mode');
+    }
+
+    function restoreCutoutPanelsFromMobile() {
+      const rightHost = document.getElementById('cutout-mobile-right-body');
+      const leftHost = document.getElementById('cutout-mobile-left-body');
+      const transformPanel = document.getElementById('cutout-transform-panel');
+      if (cutoutTransformPlaceholder && transformPanel && transformPanel.parentElement === rightHost) {
+        cutoutTransformPlaceholder.parentElement.insertBefore(
+          transformPanel,
+          cutoutTransformPlaceholder.nextSibling || cutoutTransformPlaceholder
+        );
+        if (typeof transformPanel.dataset.originalStyle !== 'undefined') {
+          transformPanel.setAttribute('style', transformPanel.dataset.originalStyle);
+        }
+        positionCutoutTransformPanel();
+      }
+      const pictureBoard = document.getElementById('cutout-picture-board');
+      if (cutoutPictureBoardPlaceholder && pictureBoard && pictureBoard.parentElement === leftHost) {
+        cutoutPictureBoardPlaceholder.parentElement.insertBefore(
+          pictureBoard,
+          cutoutPictureBoardPlaceholder.nextSibling || cutoutPictureBoardPlaceholder
+        );
+        if (typeof pictureBoard.dataset.originalStyle !== 'undefined') {
+          pictureBoard.setAttribute('style', pictureBoard.dataset.originalStyle);
+        }
+      }
+      document.body.classList.remove('cutout-mobile-mode');
+      closeCutoutMobilePanels(true);
+    }
+
+    function syncCutoutMobileUi() {
+      const active = isCutOutMode && isPhoneViewport();
+      const toggles = document.querySelectorAll('.cutout-mobile-toggle');
+      toggles.forEach((btn) => {
+        btn.style.display = active ? 'flex' : 'none';
+      });
+      if (active) moveCutoutPanelsToMobile();
+      else restoreCutoutPanelsFromMobile();
+      refreshCutoutSliderUi();
+    }
+
+    // Attach double-tap editing on phone to numeric readouts to surface keyboard
+    function attachCutoutNumericInput(el, label, applyValue) {
+      if (!el) return;
+      el.addEventListener('dblclick', () => {
+        if (!isPhoneViewport()) return;
+        const current = (el.textContent || '').trim();
+        const next = prompt(`${label}`, current);
+        if (next === null) return;
+        const val = parseFloat(next);
+        if (!Number.isFinite(val)) return;
+        applyValue(val);
+      });
+      // On touch devices, double-tap should map to dblclick; no extra handler needed
+    }
+
+    function getPointerClientX(e) {
+      if (!e) return null;
+      if (typeof e.clientX === 'number') return e.clientX;
+      if (e.touches && e.touches[0]) return e.touches[0].clientX;
+      if (e.changedTouches && e.changedTouches[0]) return e.changedTouches[0].clientX;
+      return null;
+    }
+
     function toggleCutOutMode() {
       const nextIsCutOut = !isCutOutMode;
       const grid = document.getElementById('frame-mode-canvas-grid');
@@ -3111,6 +3512,7 @@
     applyRightSidebarCutoutVisibility(isCutOutMode);
       if (isCutOutMode) initCutOutMode();
       else teardownCutOutMode();
+      syncCutoutMobileUi();
     }
 
   function setCutOutToggleButtonUi(active) {
@@ -3219,17 +3621,92 @@
       const posYEl = document.getElementById('cutout-pos-y');
       if (posXEl) posXEl.addEventListener('mousedown', (e) => beginPosDrag(e, 'x'));
       if (posYEl) posYEl.addEventListener('mousedown', (e) => beginPosDrag(e, 'y'));
+      attachCutoutNumericInput(posXEl, 'Position X', (val) => {
+        if (!cutoutSelectedObject) return;
+        cutoutSelectedObject.x = val;
+        updateCutoutPositionDisplay(cutoutSelectedObject.x, cutoutSelectedObject.y);
+        cutoutRenderSelectionOverlay();
+        try { scheduleCutoutPreviewForTime(); } catch (_e) {}
+        if (cutoutRecorderArmed) {
+          addOrUpdatePropKeyAt('position', cutoutCurrentTime, { x: cutoutSelectedObject.x, y: cutoutSelectedObject.y });
+          drawCutoutTimeline(); updateRowKeyActiveStates();
+        }
+      });
+      attachCutoutNumericInput(posYEl, 'Position Y', (val) => {
+        if (!cutoutSelectedObject) return;
+        cutoutSelectedObject.y = val;
+        updateCutoutPositionDisplay(cutoutSelectedObject.x, cutoutSelectedObject.y);
+        cutoutRenderSelectionOverlay();
+        try { scheduleCutoutPreviewForTime(); } catch (_e) {}
+        if (cutoutRecorderArmed) {
+          addOrUpdatePropKeyAt('position', cutoutCurrentTime, { x: cutoutSelectedObject.x, y: cutoutSelectedObject.y });
+          drawCutoutTimeline(); updateRowKeyActiveStates();
+        }
+      });
       // Zoom bar drag listeners (X or Y adjusts both)
       const zoomXEl = document.getElementById('cutout-zoom-x');
       const zoomYEl = document.getElementById('cutout-zoom-y');
       if (zoomXEl) zoomXEl.addEventListener('mousedown', beginZoomDrag);
       if (zoomYEl) zoomYEl.addEventListener('mousedown', beginZoomDrag);
+      attachCutoutNumericInput(zoomXEl, 'Zoom X', (val) => {
+        if (!cutoutSelectedObject) return;
+        cutoutSelectedObject.scaleX = val;
+        cutoutSelectedObject.scaleY = (typeof cutoutSelectedObject.scaleY === 'number') ? cutoutSelectedObject.scaleY : val;
+        updateCutoutZoomDisplay(cutoutSelectedObject.scaleX, cutoutSelectedObject.scaleY);
+        cutoutRenderSelectionOverlay();
+        try { scheduleCutoutPreviewForTime(); } catch (_e) {}
+        if (cutoutRecorderArmed) {
+          addOrUpdatePropKeyAt('zoom', cutoutCurrentTime, { sx: cutoutSelectedObject.scaleX, sy: cutoutSelectedObject.scaleY });
+          drawCutoutTimeline(); updateRowKeyActiveStates();
+        }
+      });
+      attachCutoutNumericInput(zoomYEl, 'Zoom Y', (val) => {
+        if (!cutoutSelectedObject) return;
+        cutoutSelectedObject.scaleY = val;
+        cutoutSelectedObject.scaleX = (typeof cutoutSelectedObject.scaleX === 'number') ? cutoutSelectedObject.scaleX : val;
+        updateCutoutZoomDisplay(cutoutSelectedObject.scaleX, cutoutSelectedObject.scaleY);
+        cutoutRenderSelectionOverlay();
+        try { scheduleCutoutPreviewForTime(); } catch (_e) {}
+        if (cutoutRecorderArmed) {
+          addOrUpdatePropKeyAt('zoom', cutoutCurrentTime, { sx: cutoutSelectedObject.scaleX, sy: cutoutSelectedObject.scaleY });
+          drawCutoutTimeline(); updateRowKeyActiveStates();
+        }
+      });
       // Rotation slider listeners
       const rotTrack = document.getElementById('cutout-rot-track');
-      if (rotTrack) rotTrack.addEventListener('mousedown', beginRotSliderDrag);
+      if (rotTrack) {
+        rotTrack.addEventListener('mousedown', beginRotSliderDrag);
+        rotTrack.addEventListener('touchstart', beginRotSliderDrag, { passive: false });
+      }
+      attachCutoutNumericInput(document.getElementById('cutout-rot-value'), 'Rotation (degrees)', (val) => {
+        if (!cutoutSelectedObject) return;
+        cutoutSelectedObject.rotation = (val * Math.PI) / 180;
+        updateCutoutRotationDisplay(val);
+        cutoutRenderSelectionOverlay();
+        try { scheduleCutoutPreviewForTime(); } catch (_e) {}
+        if (cutoutRecorderArmed) {
+          addOrUpdatePropKeyAt('rotation', cutoutCurrentTime, { deg: val });
+          drawCutoutTimeline(); updateRowKeyActiveStates();
+        }
+      });
       // Opacity slider listeners
       const opaTrack = document.getElementById('cutout-opa-track');
-      if (opaTrack) opaTrack.addEventListener('mousedown', beginOpaSliderDrag);
+      if (opaTrack) {
+        opaTrack.addEventListener('mousedown', beginOpaSliderDrag);
+        opaTrack.addEventListener('touchstart', beginOpaSliderDrag, { passive: false });
+      }
+      attachCutoutNumericInput(document.getElementById('cutout-opa-value'), 'Opacity (0-1)', (val) => {
+        if (!cutoutSelectedObject) return;
+        const clamped = Math.max(0, Math.min(1, val));
+        cutoutSelectedObject.opacity = clamped;
+        updateCutoutOpacityDisplay(clamped);
+        cutoutRenderSelectionOverlay();
+        try { scheduleCutoutPreviewForTime(); } catch (_e) {}
+        if (cutoutRecorderArmed) {
+          addOrUpdatePropKeyAt('opacity', cutoutCurrentTime, { value: clamped });
+          drawCutoutTimeline(); updateRowKeyActiveStates();
+        }
+      });
       // Recorder listeners
       const recBtn = document.getElementById('cutout-rec-btn');
       const recTime = document.getElementById('cutout-rec-time');
@@ -3247,14 +3724,7 @@
           e.preventDefault();
           boardBody.style.borderColor = '#2a2a2a';
           const files = e.dataTransfer && e.dataTransfer.files ? e.dataTransfer.files : null;
-          if (!files || !files.length) return;
-          for (let i = 0; i < files.length; i++) {
-            const f = files[i];
-            if (!f.type || !f.type.startsWith('image/')) continue;
-            const reader = new FileReader();
-            reader.onload = () => cutoutBoardAddImage(reader.result);
-            reader.readAsDataURL(f);
-          }
+          handleCutoutBoardFiles(files);
         });
         // Deselect on background click
         boardBody.addEventListener('mousedown', (e) => {
@@ -3267,6 +3737,23 @@
           }
         });
         boardBody.dataset.boardDndBound = '1';
+      }
+      const uploadBtn = document.getElementById('cutout-board-upload-btn');
+      const uploadInput = document.getElementById('cutout-board-file-input');
+      if (uploadBtn && uploadInput && !uploadBtn.dataset.boundUpload) {
+        const openPicker = () => uploadInput.click();
+        uploadBtn.addEventListener('click', openPicker);
+        uploadBtn.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            openPicker();
+          }
+        });
+        uploadInput.addEventListener('change', () => {
+          handleCutoutBoardFiles(uploadInput.files);
+          uploadInput.value = '';
+        });
+        uploadBtn.dataset.boundUpload = '1';
       }
       // Initialize displays to defaults
       updateCutoutOpacityDisplay(1);
@@ -4140,7 +4627,8 @@
       if (track && knob) {
         const clamped = Math.max(-180, Math.min(180, degrees || 0));
         const pct = (clamped + 180) / 360; // 0..1
-        const leftPx = pct * track.clientWidth;
+        const tw = track.clientWidth || 120;
+        const leftPx = pct * tw;
         knob.style.left = `${leftPx}px`;
         knob.style.transform = 'translate(-50%, -50%)';
       }
@@ -4158,7 +4646,8 @@
       if (track && knob) {
         const clamped = Math.max(0, Math.min(1, value || 0));
         const pct = clamped; // 0..1
-        const leftPx = pct * track.clientWidth;
+        const tw = track.clientWidth || 120;
+        const leftPx = pct * tw;
         knob.style.left = `${leftPx}px`;
         knob.style.transform = 'translate(-50%, -50%)';
       }
@@ -4166,6 +4655,21 @@
     }
     function clearCutoutOpacityDisplay() {
       updateCutoutOpacityDisplay(1);
+    }
+
+    let cutoutSelectedObject = null;
+
+    // Re-sync slider knob positions after layout shifts (e.g., phone drawers)
+    function refreshCutoutSliderUi() {
+      const obj = cutoutSelectedObject;
+      const rotDeg = obj && typeof obj.rotation === 'number'
+        ? (obj.rotation * 180) / Math.PI
+        : 0;
+      const opaVal = obj && typeof obj.opacity === 'number'
+        ? obj.opacity
+        : 1;
+      updateCutoutRotationDisplay(rotDeg);
+      updateCutoutOpacityDisplay(opaVal);
     }
     
     // Cut Out per-clip effect application
@@ -4242,20 +4746,29 @@
       }
     }
     
-    // Align the right-side transform panel to the canvas top
+    // Position both panels below the "Cut Out Mode" title at same height
     function positionCutoutTransformPanel() {
-      const panel = document.getElementById('cutout-transform-panel');
-      const canvasContainer = document.getElementById('cutout-canvas-container');
-      const parentPanel = panel && panel.parentElement;
-      if (!panel || !canvasContainer || !parentPanel) return;
-      // parentPanel is .panel with position:relative; canvasContainer is inside it,
-      // so offsetTop gives the top within this context.
-      const top = canvasContainer.offsetTop || 0;
-      panel.style.top = top + 'px';
+      if (document.body && document.body.classList.contains('cutout-mobile-mode')) return;
+      const transformPanel = document.getElementById('cutout-transform-panel');
+      const pictureBoard = document.getElementById('cutout-picture-board');
+      // Position below "Cut Out Mode" title (which is at top:12px with ~14px height)
+      // Both panels should be at the same fixed position with proper clearance
+      const topOffset = 56; // Below the Cut Out Mode title with margin
+      if (transformPanel) transformPanel.style.top = topOffset + 'px';
+      if (pictureBoard) pictureBoard.style.top = topOffset + 'px';
     }
+
+    if (cutoutPhoneMediaQuery) {
+      if (typeof cutoutPhoneMediaQuery.addEventListener === 'function') {
+        cutoutPhoneMediaQuery.addEventListener('change', syncCutoutMobileUi);
+      } else if (typeof cutoutPhoneMediaQuery.addListener === 'function') {
+        cutoutPhoneMediaQuery.addListener(syncCutoutMobileUi);
+      }
+    }
+    window.addEventListener('resize', syncCutoutMobileUi);
+    window.addEventListener('resize', refreshCutoutSliderUi);
     
     // Cutout selection object and overlay (mirrors regular mode but scoped to cutout)
-    let cutoutSelectedObject = null;
     let cutoutActiveObject = null;
     let cutoutObjectCounter = 0;
     let lastOilAngle = 0;
@@ -5578,15 +6091,19 @@
     }
     function beginRotSliderDrag(e) {
       if (!cutoutSelectedObject) return;
+      const cx = getPointerClientX(e);
+      if (cx === null) return;
       e.preventDefault();
       e.stopPropagation();
       // Clear unrelated pending keys to avoid committing stale position/zoom on rotation change
       if (!cutoutPendingDragKeys) cutoutPendingDragKeys = { position: null, rotation: null, zoom: null, opacity: null };
       else { cutoutPendingDragKeys.position = null; cutoutPendingDragKeys.zoom = null; cutoutPendingDragKeys.opacity = null; }
       isDraggingRotSlider = true;
-      rotSliderStartX = e.clientX;
+      rotSliderStartX = cx;
       window.addEventListener('mousemove', onRotSliderDrag);
+      window.addEventListener('touchmove', onRotSliderDrag, { passive: false });
       window.addEventListener('mouseup', endRotSliderDrag, { once: true });
+      window.addEventListener('touchend', endRotSliderDrag, { once: true });
       // Update immediately based on click position
       onRotSliderDrag(e);
     }
@@ -5595,7 +6112,9 @@
       const track = document.getElementById('cutout-rot-track');
       if (!track) return;
       const rect = track.getBoundingClientRect();
-      const px = Math.max(rect.left, Math.min(rect.right, e.clientX));
+      const cx = getPointerClientX(e);
+      if (cx === null) return;
+      const px = Math.max(rect.left, Math.min(rect.right, cx));
       const pct = (px - rect.left) / rect.width; // 0..1
       const deg = (pct * 360) - 180; // -180..+180
       setCutoutRotationFromDegrees(deg);
@@ -5607,6 +6126,7 @@
     function endRotSliderDrag() {
       isDraggingRotSlider = false;
       window.removeEventListener('mousemove', onRotSliderDrag);
+      window.removeEventListener('touchmove', onRotSliderDrag);
     }
     
     // Blur slider removed
@@ -5621,11 +6141,15 @@
     }
     function beginOpaSliderDrag(e) {
       if (!cutoutSelectedObject) return;
+      const cx = getPointerClientX(e);
+      if (cx === null) return;
       e.preventDefault();
       e.stopPropagation();
       isDraggingOpaSlider = true;
       window.addEventListener('mousemove', onOpaSliderDrag);
+      window.addEventListener('touchmove', onOpaSliderDrag, { passive: false });
       window.addEventListener('mouseup', endOpaSliderDrag, { once: true });
+      window.addEventListener('touchend', endOpaSliderDrag, { once: true });
       onOpaSliderDrag(e);
     }
     function onOpaSliderDrag(e) {
@@ -5633,7 +6157,9 @@
       const track = document.getElementById('cutout-opa-track');
       if (!track) return;
       const rect = track.getBoundingClientRect();
-      const px = Math.max(rect.left, Math.min(rect.right, e.clientX));
+      const cx = getPointerClientX(e);
+      if (cx === null) return;
+      const px = Math.max(rect.left, Math.min(rect.right, cx));
       const pct = (px - rect.left) / rect.width;
       setCutoutOpacityFromValue(pct);
       if (cutoutRecorderArmed) {
@@ -5644,6 +6170,7 @@
     function endOpaSliderDrag() {
       isDraggingOpaSlider = false;
       window.removeEventListener('mousemove', onOpaSliderDrag);
+      window.removeEventListener('touchmove', onOpaSliderDrag);
     }
     // Draggable property keys on timeline
     function beginPropKeyDrag(e, prop, keyRef) {
@@ -7706,6 +8233,58 @@
         e.stopPropagation();
       } catch (_e) {}
     }
+    function ensureCutoutBoardDragGhost() {
+      let ghost = document.getElementById('cutout-board-drag-ghost');
+      if (!ghost) {
+        ghost = document.createElement('div');
+        ghost.id = 'cutout-board-drag-ghost';
+        ghost.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><path d="M12 8v8M8 12h8"></path></svg>';
+        document.body.appendChild(ghost);
+      }
+      return ghost;
+    }
+    function handleCutoutBoardFiles(files) {
+      if (!files || !files.length) return;
+      for (let i = 0; i < files.length; i++) {
+        const f = files[i];
+        if (!f.type || !f.type.startsWith('image/')) continue;
+        const reader = new FileReader();
+        reader.onload = () => cutoutBoardAddImage(reader.result);
+        reader.readAsDataURL(f);
+      }
+    }
+    function maybeDropMobileBoardImage(ev, src) {
+      const canvasContainer = document.getElementById('cutout-canvas-container');
+      if (!canvasContainer || !cutoutCanvas) return;
+      const rect = canvasContainer.getBoundingClientRect();
+      const within = ev.clientX >= rect.left && ev.clientX <= rect.right && ev.clientY >= rect.top && ev.clientY <= rect.bottom;
+      if (!within) return;
+      const coords = cutoutCanvasCoords(ev);
+      cutoutPlaceImageFromSrcAt(src, coords.x, coords.y);
+    }
+    function attachCutoutMobileDrag(cell, src) {
+      cell.addEventListener('pointerdown', (e) => {
+        if (!isPhoneViewport()) return;
+        if (!cutoutCanvas) return;
+        e.preventDefault();
+        const ghost = ensureCutoutBoardDragGhost();
+        const updateGhost = (ev) => {
+          ghost.style.display = 'flex';
+          ghost.style.transform = `translate(${ev.clientX - 17}px, ${ev.clientY - 17}px)`;
+        };
+        const endDrag = (ev) => {
+          ghost.style.display = 'none';
+          window.removeEventListener('pointermove', updateGhost);
+          window.removeEventListener('pointerup', endDrag);
+          window.removeEventListener('pointercancel', endDrag);
+          maybeDropMobileBoardImage(ev, src);
+        };
+        updateGhost(e);
+        window.addEventListener('pointermove', updateGhost);
+        window.addEventListener('pointerup', endDrag, { once: true });
+        window.addEventListener('pointercancel', endDrag, { once: true });
+      });
+    }
     function cutoutBoardAddImage(src) {
       const grid = document.getElementById('cutout-board-grid');
       if (!grid) return;
@@ -7735,6 +8314,7 @@
         e.dataTransfer.setData('text/plain', src);
         e.dataTransfer.effectAllowed = 'copy';
       });
+      attachCutoutMobileDrag(cell, src);
       grid.appendChild(cell);
     }
     function cutoutPlaceImageFromSrcAt(src, canvasX, canvasY) {
@@ -21622,6 +22202,39 @@
       return frameDurations[idx] || 1;
     }
 
+    function isPhoneViewport() {
+      return cutoutPhoneMediaQuery ? cutoutPhoneMediaQuery.matches : (typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
+    }
+
+    function closeCutoutMobilePanels(skipOverlay) {
+      const leftPanel = document.getElementById('cutout-mobile-left-panel');
+      const rightPanel = document.getElementById('cutout-mobile-right-panel');
+      if (leftPanel) leftPanel.classList.remove('open');
+      if (rightPanel) rightPanel.classList.remove('open');
+      if (!skipOverlay) {
+        const overlay = document.getElementById('sidebar-overlay');
+        if (overlay) overlay.classList.remove('active');
+      }
+    }
+
+    function toggleCutoutMobilePanel(side) {
+      if (!isCutOutMode || !isPhoneViewport()) return;
+      const target = side === 'right'
+        ? document.getElementById('cutout-mobile-right-panel')
+        : document.getElementById('cutout-mobile-left-panel');
+      if (!target) return;
+      const overlay = document.getElementById('sidebar-overlay');
+      const isOpen = target.classList.contains('open');
+      closeSidebars();
+      closeCutoutMobilePanels(true);
+      if (!isOpen) {
+        target.classList.add('open');
+        if (overlay) overlay.classList.add('active');
+      } else if (overlay) {
+        overlay.classList.remove('active');
+      }
+    }
+
     /* Added sidebar toggle functions for mobile */
     function toggleLeftSidebar() {
       const sidebar = document.getElementById('left-sidebar');
@@ -21652,6 +22265,7 @@
     function closeSidebars() {
       document.getElementById('left-sidebar').classList.remove('open');
       document.getElementById('right-sidebar').classList.remove('open');
+      closeCutoutMobilePanels(true);
       document.getElementById('sidebar-overlay').classList.remove('active');
     }
 
