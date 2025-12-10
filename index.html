@@ -3350,6 +3350,9 @@
     let cutoutSelectedBoneIndex = -1;
     let cutoutStartTimeAtPlay = 0;
     let isCutoutDragging = false;
+    let cutoutDragMoveHandler = null;
+    let cutoutDragMoveEvent = '';
+    let cutoutDragEndEvents = [];
     let cutoutPlayStartTs = 0;
     // Cutout drawing state and timeline clips
     let isCutoutDrawing = false;
@@ -3733,7 +3736,12 @@
       cutoutTimelineEl = document.getElementById('cutout-ruler-area');
       cutoutScrubberEl = document.getElementById('cutout-timeline-scrubber');
       if (cutoutTimelineEl && !cutoutTimelineEl.dataset.cutoutRulerBound) {
+        // Enable pointer/touch scrubbing, especially on phones
+        cutoutTimelineEl.style.touchAction = 'none';
+        cutoutTimelineEl.addEventListener('pointerdown', cutoutBeginDrag);
+        // Fallback for browsers without PointerEvents
         cutoutTimelineEl.addEventListener('mousedown', cutoutBeginDrag);
+        cutoutTimelineEl.addEventListener('touchstart', cutoutBeginDrag, { passive: false });
         // Accept Magic Effects drops onto ruler area to assign to clips
         cutoutTimelineEl.addEventListener('dragover', (e) => { e.preventDefault(); });
         cutoutTimelineEl.addEventListener('drop', handleCutoutEffectDrop);
@@ -3741,6 +3749,8 @@
         cutoutTimelineEl.addEventListener('drop', handleCutoutTransitionDrop);
         cutoutTimelineEl.dataset.cutoutRulerBound = '1';
       }
+      // Make transport controls respond instantly to taps on phones
+      bindCutoutTransportTaps();
       // Also accept drops on the clips lane
       const cutoutClipsLane = document.getElementById('cutout-timeline-clips');
       if (cutoutClipsLane && !cutoutClipsLane.dataset.cutoutClipsBound) {
@@ -3759,6 +3769,11 @@
         cutoutCanvas.addEventListener('mousemove', cutoutDraw);
         window.addEventListener('mouseup', cutoutStopDraw);
         cutoutCanvas.addEventListener('mouseleave', cutoutStopDraw);
+        cutoutCanvas.addEventListener('touchstart', cutoutTouchStart, { passive: false });
+        cutoutCanvas.addEventListener('touchmove', cutoutTouchMove, { passive: false });
+        window.addEventListener('touchend', cutoutTouchEnd);
+        cutoutCanvas.addEventListener('touchend', cutoutTouchEnd);
+        cutoutCanvas.addEventListener('touchcancel', cutoutTouchEnd);
         // Wheel zoom in/out on cutout canvas
         cutoutCanvas.addEventListener('wheel', (e) => {
           e.preventDefault();
@@ -4215,6 +4230,11 @@
         cutoutCanvas.removeEventListener('mousemove', cutoutDraw);
         window.removeEventListener('mouseup', cutoutStopDraw);
         cutoutCanvas.removeEventListener('mouseleave', cutoutStopDraw);
+        cutoutCanvas.removeEventListener('touchstart', cutoutTouchStart);
+        cutoutCanvas.removeEventListener('touchmove', cutoutTouchMove);
+        window.removeEventListener('touchend', cutoutTouchEnd);
+        cutoutCanvas.removeEventListener('touchend', cutoutTouchEnd);
+        cutoutCanvas.removeEventListener('touchcancel', cutoutTouchEnd);
       }
       if (cutoutBonesOverlayCanvas) {
         cutoutBonesOverlayCanvas.remove();
@@ -4325,6 +4345,27 @@
       if (btnRev) btnRev.classList.toggle('active', mode === 'reverse');
     }
 
+    // Ensure transport buttons react to taps in phone layout
+    function bindCutoutTransportTaps() {
+      const attach = (id, handler) => {
+        const el = document.getElementById(id);
+        if (!el || el.dataset.cutoutTapBound) return;
+        const onTouch = (evt) => {
+          if (!isPhoneViewport()) return;
+          if (evt && evt.cancelable) evt.preventDefault();
+          handler();
+        };
+        el.addEventListener('touchstart', onTouch, { passive: false });
+        el.addEventListener('pointerdown', (evt) => {
+          if (evt.pointerType === 'touch') onTouch(evt);
+        });
+        el.dataset.cutoutTapBound = '1';
+      };
+      attach('cutout-btn-play', cutoutPlayForward);
+      attach('cutout-btn-pause', cutoutPause);
+      attach('cutout-btn-reverse', cutoutPlayReverse);
+    }
+
     // Keep cutout sizing in sync on window resize
     window.addEventListener('resize', () => {
       if (isCutOutMode) {
@@ -4340,10 +4381,13 @@
 
     function cutoutSetTimeFromEvent(e) {
       const track = document.getElementById('cutout-ruler-area');
-      if (!track) return;
+      const clientX = getPointerClientX(e);
+      if (!track || clientX === null) return;
       const rect = track.getBoundingClientRect();
-      const x = e.clientX - rect.left;
-      const pct = Math.max(0, Math.min(1, x / rect.width));
+      const width = rect.width || track.offsetWidth || 0;
+      if (width <= 0) return;
+      const x = clientX - rect.left;
+      const pct = Math.max(0, Math.min(1, x / width));
       cutoutCurrentTime = pct * cutoutDuration;
       updateCutoutScrubber();
       // Update bone positions from keyframes when scrubbing timeline
@@ -4354,22 +4398,45 @@
     }
 
     function cutoutBeginDrag(e) {
+      if (isCutoutDragging) return;
       isCutoutDragging = true;
       document.body.style.userSelect = 'none';
-      window.addEventListener('mousemove', cutoutDragMove);
-      window.addEventListener('mouseup', cutoutEndDrag, { once: true });
+      cutoutSetTimeFromEvent(e);
+      const usingPointerEvents = typeof PointerEvent !== 'undefined';
+      const isTouch = !!(e && (e.pointerType === 'touch' || e.type === 'touchstart'));
+      const moveEvent = usingPointerEvents
+        ? 'pointermove'
+        : ('ontouchmove' in window ? 'touchmove' : 'mousemove');
+      const endEvents = usingPointerEvents
+        ? ['pointerup', 'pointercancel']
+        : (('ontouchend' in window) ? ['touchend', 'touchcancel'] : ['mouseup']);
+      if (isTouch && e && e.cancelable) e.preventDefault();
+      cutoutDragMoveEvent = moveEvent;
+      cutoutDragMoveHandler = (ev) => cutoutDragMove(ev);
+      window.addEventListener(moveEvent, cutoutDragMoveHandler, { passive: false });
+      cutoutDragEndEvents = endEvents;
+      endEvents.forEach((evtName) => window.addEventListener(evtName, cutoutEndDrag, { once: true }));
     }
 
     function cutoutDragMove(e) {
       if (!isCutoutDragging) return;
       cutoutSetTimeFromEvent(e);
+      if (e && e.cancelable) e.preventDefault();
     }
 
     function cutoutEndDrag() {
       if (!isCutoutDragging) return;
       isCutoutDragging = false;
       document.body.style.userSelect = '';
-      window.removeEventListener('mousemove', cutoutDragMove);
+      if (cutoutDragMoveEvent && cutoutDragMoveHandler) {
+        window.removeEventListener(cutoutDragMoveEvent, cutoutDragMoveHandler);
+      }
+      if (Array.isArray(cutoutDragEndEvents)) {
+        cutoutDragEndEvents.forEach((evtName) => window.removeEventListener(evtName, cutoutEndDrag));
+      }
+      cutoutDragMoveEvent = '';
+      cutoutDragMoveHandler = null;
+      cutoutDragEndEvents = [];
       if (cutoutIsPlaying) {
         cutoutStartTimeAtPlay = cutoutCurrentTime;
         cutoutPlayStartTs = performance.now();
@@ -4863,10 +4930,13 @@
     }
     function cutoutTimeFromEvent(e) {
       const track = document.getElementById('cutout-ruler-area');
-      if (!track) return cutoutCurrentTime || 0;
+      const cx = getPointerClientX(e);
+      if (!track || cx === null) return cutoutCurrentTime || 0;
       const rect = track.getBoundingClientRect();
-      const x = Math.max(0, Math.min(rect.width, (e.clientX || 0) - rect.left));
-      const t = (rect.width > 0) ? (x / rect.width) * cutoutDuration : (cutoutCurrentTime || 0);
+      const width = rect.width || track.offsetWidth || 0;
+      if (width <= 0) return cutoutCurrentTime || 0;
+      const x = Math.max(0, Math.min(width, cx - rect.left));
+      const t = (width > 0) ? (x / width) * cutoutDuration : (cutoutCurrentTime || 0);
       return Math.max(0, Math.min(cutoutDuration, t));
     }
     function handleCutoutEffectDrop(e) {
@@ -8285,10 +8355,18 @@
     }
     
     function cutoutCanvasCoords(e) {
+      if (!cutoutCanvas) return { x: 0, y: 0 };
+      const point = (e && e.touches && e.touches[0])
+        ? e.touches[0]
+        : (e && e.changedTouches && e.changedTouches[0])
+          ? e.changedTouches[0]
+          : e;
       const rect = cutoutCanvas.getBoundingClientRect();
       const scaleX = cutoutCanvas.width / rect.width;
       const scaleY = cutoutCanvas.height / rect.height;
-      return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+      const clientX = point && typeof point.clientX === 'number' ? point.clientX : 0;
+      const clientY = point && typeof point.clientY === 'number' ? point.clientY : 0;
+      return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
     }
     
     // --- Point-accurate zoom anchoring (Cut Out + Regular) ---
@@ -8977,6 +9055,22 @@
       currentColor = hex;
       const colorInput = document.getElementById('color-picker');
       if (colorInput) colorInput.value = hex;
+    }
+    
+    // Touch adapters so Cut Out drawing works on mobile without frame-mode listeners
+    function cutoutTouchStart(e) {
+      if (!cutoutCanvas) return;
+      e.preventDefault();
+      cutoutStartDraw(e);
+    }
+    function cutoutTouchMove(e) {
+      if (!cutoutCanvas) return;
+      e.preventDefault();
+      cutoutDraw(e);
+    }
+    function cutoutTouchEnd(e) {
+      e.preventDefault();
+      cutoutStopDraw();
     }
     
     function cutoutStartDraw(e) {
@@ -10369,6 +10463,8 @@
     
     // Phone dimensions: start drawing - ONLY visible canvas, no layers
     function mobileStartDrawing(canvas, clientX, clientY) {
+      // Skip frame-mode mobile drawing when Cut Out mode is active
+      if (isCutOutMode) return;
       // Get frame index
       let frameIndex = canvases.indexOf(canvas);
       if (frameIndex === -1) frameIndex = currentFrame;
@@ -10416,6 +10512,8 @@
     
     // Phone dimensions: draw - ONLY visible canvas, smooth strokes
     function mobileDraw(canvas, clientX, clientY) {
+      // Skip frame-mode mobile drawing when Cut Out mode is active
+      if (isCutOutMode) return;
       if (!isMobileTouchDrawing) return;
       
       // Get coordinates directly
@@ -10462,6 +10560,8 @@
     
     // Phone dimensions: stop drawing - copy from visible canvas to layer for persistence
     function mobileStopDrawing() {
+      // Skip frame-mode mobile drawing when Cut Out mode is active
+      if (isCutOutMode) return;
       if (!isMobileTouchDrawing) return;
       isMobileTouchDrawing = false;
       isDrawing = false;
@@ -10555,167 +10655,6 @@
       ctx.restore();
     }
 
-    // Track and clean up brush-drawing listeners on legacy square frame canvases
-    const brushCanvasListeners = new Map();
-
-    function detachBrushCanvasListeners(canvas) {
-      if (!canvas) return;
-      const listeners = brushCanvasListeners.get(canvas);
-      if (!listeners) return;
-      listeners.forEach(([type, handler, options]) => {
-        canvas.removeEventListener(type, handler, options);
-      });
-      brushCanvasListeners.delete(canvas);
-    }
-
-    function detachAllBrushCanvasListeners() {
-      brushCanvasListeners.forEach((listeners, canvas) => {
-        listeners.forEach(([type, handler, options]) => {
-          canvas.removeEventListener(type, handler, options);
-        });
-      });
-      brushCanvasListeners.clear();
-    }
-
-    function attachBrushCanvasListeners(canvas, resolveFrameIndex) {
-      if (!canvas) return;
-      detachBrushCanvasListeners(canvas);
-      const getFrameIndex = (typeof resolveFrameIndex === 'function')
-        ? resolveFrameIndex
-        : () => {
-            const idx = canvases.indexOf(canvas);
-            return idx !== -1 ? idx : currentFrame;
-          };
-
-      const handleMouseDown = (e) => {
-        const frameIndex = getFrameIndex();
-        if (frameIndex !== currentFrame) {
-          currentFrame = frameIndex;
-          document.querySelectorAll('.canvas-container').forEach((el, i) => {
-            el.classList.toggle('active', i === frameIndex);
-          });
-          document.querySelectorAll('.timeline-frame').forEach((el, i) => {
-            el.classList.toggle('active', i === frameIndex);
-          });
-          const infoEl = document.getElementById('current-frame-info');
-          if (infoEl) infoEl.textContent = frameIndex + 1;
-
-          if (isDrawing) {
-            const coords = getCanvasCoordinates(canvases[frameIndex] || canvas, e.clientX, e.clientY);
-            lastX = coords.x;
-            lastY = coords.y;
-            const layer = frameLayers[frameIndex] && frameLayers[frameIndex][currentLayer];
-            const ctx = layer && layer.ctx;
-            if (ctx) {
-              ctx.globalAlpha = brushOpacity;
-              ctx.strokeStyle = currentColor;
-              if (currentTool === 'pencil') {
-                ctx.lineWidth = Math.max(1, brushSize / 2);
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                ctx.beginPath();
-                ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
-                ctx.fill();
-              } else if (currentTool === 'brush') {
-                drawWithBrushType(ctx, lastX, lastY, lastX, lastY);
-              } else if (currentTool === 'eraser') {
-                ctx.globalCompositeOperation = 'destination-out';
-                ctx.lineWidth = brushSize;
-                ctx.lineCap = 'round';
-                ctx.lineJoin = 'round';
-                ctx.beginPath();
-                ctx.arc(lastX, lastY, brushSize / 2, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.globalCompositeOperation = 'source-over';
-              }
-              ctx.globalAlpha = 1;
-            }
-          } else {
-            startDrawing(e);
-          }
-        } else {
-          startDrawing(e);
-        }
-      };
-
-      const handleMouseUp = (e) => stopDrawing(e);
-      const handleMouseLeave = (e) => stopDrawing(e);
-      const handleWheel = (e) => {
-        e.preventDefault();
-        handleZoom(e, getFrameIndex());
-      };
-      const handleTouchStart = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const touch = e.touches[0];
-        if (!touch) return;
-        if (shouldUseMobileTouchDrawing()) {
-          mobileStartDrawing(canvas, touch.clientX, touch.clientY);
-          return;
-        }
-        const touchEvent = {
-          target: canvas,
-          clientX: touch.clientX,
-          clientY: touch.clientY,
-          preventDefault: () => {},
-          type: 'touchstart'
-        };
-        startDrawing(touchEvent);
-      };
-      const handleTouchMove = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        const touch = e.touches[0];
-        if (!touch) return;
-        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
-          mobileDraw(canvas, touch.clientX, touch.clientY);
-          return;
-        }
-        if (!isDrawing) return;
-        const touchEvent = {
-          target: canvas,
-          clientX: touch.clientX,
-          clientY: touch.clientY,
-          preventDefault: () => {},
-          type: 'touchmove'
-        };
-        draw(touchEvent);
-      };
-      const handleTouchEnd = (e) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
-          mobileStopDrawing();
-          return;
-        }
-        stopDrawing();
-      };
-      const handleTouchCancel = (e) => {
-        e.preventDefault();
-        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
-          mobileStopDrawing();
-          return;
-        }
-        stopDrawing();
-      };
-
-      const listeners = [
-        ['mousedown', handleMouseDown, undefined],
-        ['mouseup', handleMouseUp, undefined],
-        ['mouseleave', handleMouseLeave, undefined],
-        ['wheel', handleWheel, undefined],
-        ['touchstart', handleTouchStart, { passive: false }],
-        ['touchmove', handleTouchMove, { passive: false }],
-        ['touchend', handleTouchEnd, { passive: false }],
-        ['touchcancel', handleTouchCancel, { passive: false }]
-      ];
-
-      listeners.forEach(([type, handler, options]) => {
-        canvas.addEventListener(type, handler, options);
-      });
-      brushCanvasListeners.set(canvas, listeners);
-    }
-
     // Initialize canvases
     for (let i = 0; i < 6; i++) {
       const canvas = document.getElementById(`canvas-${i}`);
@@ -10748,9 +10687,141 @@
       fillCheckerboard(thumbCtx, thumbCanvas.width, thumbCanvas.height);
       thumbCanvases.push(thumbCanvas);
       thumbContexts.push(thumbCtx);
-      attachBrushCanvasListeners(canvas, () => {
-        const idx = canvases.indexOf(canvas);
-        return idx !== -1 ? idx : i;
+
+      canvas.addEventListener('mousedown', (e) => {
+        const frameIndex = canvases.indexOf(e.target);
+        if (frameIndex !== currentFrame) {
+          // Switch frame instantly
+          currentFrame = frameIndex;
+          document.querySelectorAll('.canvas-container').forEach((el, i) => {
+            el.classList.toggle('active', i === frameIndex);
+          });
+          document.querySelectorAll('.timeline-frame').forEach((el, i) => {
+            el.classList.toggle('active', i === frameIndex);
+          });
+          document.getElementById('current-frame-info').textContent = frameIndex + 1;
+          
+          // Continue drawing seamlessly on the new frame
+          if (isDrawing) {
+            // Update coordinates for the new frame
+            const coords = getCanvasCoordinates(canvases[frameIndex], e.clientX, e.clientY);
+            lastX = coords.x;
+            lastY = coords.y;
+            // Draw a dot at the new position to maintain continuity
+            const layer = frameLayers[frameIndex][currentLayer];
+            const ctx = layer.ctx;
+            ctx.globalAlpha = brushOpacity;
+            ctx.strokeStyle = currentColor;
+            
+            if (currentTool === 'pencil') {
+              ctx.lineWidth = Math.max(1, brushSize / 2);
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.beginPath();
+              ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
+              ctx.fill();
+            } else if (currentTool === 'brush') {
+              drawWithBrushType(ctx, lastX, lastY, lastX, lastY);
+            } else if (currentTool === 'eraser') {
+              ctx.globalCompositeOperation = 'destination-out';
+              ctx.lineWidth = brushSize;
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.beginPath();
+              ctx.arc(lastX, lastY, brushSize / 2, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.globalCompositeOperation = 'source-over';
+            }
+            
+            ctx.globalAlpha = 1;
+          } else {
+            startDrawing(e);
+          }
+        } else {
+          startDrawing(e);
+        }
+      });
+      // Don't add individual mousemove listeners - use global handler
+      canvas.addEventListener('mouseup', stopDrawing);
+      canvas.addEventListener('mouseleave', stopDrawing);
+      
+      canvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const touch = e.touches[0];
+        if (!touch) return;
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing()) {
+          mobileStartDrawing(canvas, touch.clientX, touch.clientY);
+          return;
+        }
+        
+        // Desktop/complex mode fallback
+        const touchEvent = {
+          target: canvas,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          preventDefault: () => {},
+          type: 'touchstart'
+        };
+        startDrawing(touchEvent);
+      }, { passive: false });
+      
+      canvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const touch = e.touches[0];
+        if (!touch) return;
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileDraw(canvas, touch.clientX, touch.clientY);
+          return;
+        }
+        
+        // Desktop/complex mode fallback
+        if (!isDrawing) return;
+        const touchEvent = {
+          target: canvas,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          preventDefault: () => {},
+          type: 'touchmove'
+        };
+        draw(touchEvent);
+      }, { passive: false });
+      
+      canvas.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileStopDrawing();
+          return;
+        }
+        
+        stopDrawing();
+      }, { passive: false });
+      
+      canvas.addEventListener('touchcancel', (e) => {
+        e.preventDefault();
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileStopDrawing();
+          return;
+        }
+        
+        stopDrawing();
+      }, { passive: false });
+      
+      /* Added wheel event listener for zoom functionality */
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const frameIndex = canvases.indexOf(e.target);
+        handleZoom(e, frameIndex);
       });
 
       // Enable drag & drop image import on the frame container
@@ -16103,6 +16174,8 @@
     }
 
     function startDrawing(e) {
+      // Do not start frame-mode drawing while Cut Out mode is active
+      if (isCutOutMode) return;
       const canvas = e.target;
       const frameIndex = canvases.indexOf(canvas);
       if (frameIndex !== currentFrame) return;
@@ -16473,6 +16546,8 @@
     }
 
     function draw(e) {
+      // Do not process frame-mode drawing while Cut Out mode is active
+      if (isCutOutMode) return;
       if (!isDrawing) return;
 
       const layer = frameLayers[currentFrame][currentLayer];
@@ -16937,6 +17012,8 @@
     }
 
     function stopDrawing() {
+      // Do not process frame-mode drawing while Cut Out mode is active
+      if (isCutOutMode) return;
       if (!isDrawing) return;
       isDrawing = false;
 
@@ -20805,10 +20882,127 @@
       newCtx.fillRect(0, 0, newCanvas.width, newCanvas.height);
       canvases.push(newCanvas);
       contexts.push(newCtx);
-      attachBrushCanvasListeners(newCanvas, () => {
-        const idx = canvases.indexOf(newCanvas);
-        return idx !== -1 ? idx : newFrameIndex;
+      newCanvas.addEventListener('mousedown', (e) => {
+        const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : newFrameIndex;
+        if (frameIndex !== currentFrame) {
+          currentFrame = frameIndex;
+          document.querySelectorAll('.canvas-container').forEach((el, i) => {
+            el.classList.toggle('active', i === frameIndex);
+          });
+          document.querySelectorAll('.timeline-frame').forEach((el, i) => {
+            el.classList.toggle('active', i === frameIndex);
+          });
+          document.getElementById('current-frame-info').textContent = frameIndex + 1;
+          if (isDrawing) {
+            const coords = getCanvasCoordinates(canvases[frameIndex], e.clientX, e.clientY);
+            lastX = coords.x;
+            lastY = coords.y;
+            const layer = frameLayers[frameIndex][currentLayer];
+            const ctx = layer.ctx;
+            ctx.globalAlpha = brushOpacity;
+            ctx.strokeStyle = currentColor;
+            if (currentTool === 'pencil') {
+              ctx.lineWidth = Math.max(1, brushSize / 2);
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.beginPath();
+              ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
+              ctx.fill();
+            } else if (currentTool === 'brush') {
+              drawWithBrushType(ctx, lastX, lastY, lastX, lastY);
+            } else if (currentTool === 'eraser') {
+              ctx.globalCompositeOperation = 'destination-out';
+              ctx.lineWidth = brushSize;
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.beginPath();
+              ctx.arc(lastX, lastY, brushSize / 2, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.globalCompositeOperation = 'source-over';
+            }
+            ctx.globalAlpha = 1;
+          } else {
+            startDrawing(e);
+          }
+        } else {
+          startDrawing(e);
+        }
       });
+      newCanvas.addEventListener('mouseup', stopDrawing);
+      newCanvas.addEventListener('mouseleave', stopDrawing);
+      newCanvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : newFrameIndex;
+        handleZoom(e, frameIndex);
+      });
+      newCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const touch = e.touches[0];
+        if (!touch) return;
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing()) {
+          mobileStartDrawing(newCanvas, touch.clientX, touch.clientY);
+          return;
+        }
+        
+        // Desktop/complex mode fallback
+        const touchEvent = {
+          target: newCanvas,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          preventDefault: () => {},
+          type: 'touchstart'
+        };
+        startDrawing(touchEvent);
+      }, { passive: false });
+      newCanvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const touch = e.touches[0];
+        if (!touch) return;
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileDraw(newCanvas, touch.clientX, touch.clientY);
+          return;
+        }
+        
+        // Desktop/complex mode fallback
+        if (!isDrawing) return;
+        const touchEvent = {
+          target: newCanvas,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          preventDefault: () => {},
+          type: 'touchmove'
+        };
+        draw(touchEvent);
+      }, { passive: false });
+      newCanvas.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileStopDrawing();
+          return;
+        }
+        
+        stopDrawing();
+      }, { passive: false });
+      newCanvas.addEventListener('touchcancel', (e) => {
+        e.preventDefault();
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileStopDrawing();
+          return;
+        }
+        
+        stopDrawing();
+      }, { passive: false });
       newFrameContainer.addEventListener('dragover', (e) => { e.preventDefault(); });
       newFrameContainer.addEventListener('dragenter', (e) => { e.preventDefault(); });
       newFrameContainer.addEventListener('dragleave', (e) => { e.preventDefault(); });
@@ -21239,10 +21433,131 @@
       const newCtx = newCanvas.getContext('2d', { willReadFrequently: true });
       newCtx.fillStyle = '#1a1a1a';
       newCtx.fillRect(0, 0, newCanvas.width, newCanvas.height);
-      attachBrushCanvasListeners(newCanvas, () => {
-        const idx = canvases.indexOf(newCanvas);
-        return idx !== -1 ? idx : newFrameIndex;
+      // Attach interaction handlers so the new frame is drawable/selectable like existing ones
+      newCanvas.addEventListener('mousedown', (e) => {
+        const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : newFrameIndex;
+        if (frameIndex !== currentFrame) {
+          // Switch frame instantly
+          currentFrame = frameIndex;
+          document.querySelectorAll('.canvas-container').forEach((el, i) => {
+            el.classList.toggle('active', i === frameIndex);
+          });
+          document.querySelectorAll('.timeline-frame').forEach((el, i) => {
+            el.classList.toggle('active', i === frameIndex);
+          });
+          document.getElementById('current-frame-info').textContent = frameIndex + 1;
+          
+          // Continue drawing seamlessly on the new frame
+          if (isDrawing) {
+            const coords = getCanvasCoordinates(canvases[frameIndex], e.clientX, e.clientY);
+            lastX = coords.x;
+            lastY = coords.y;
+            const layer = frameLayers[frameIndex][currentLayer];
+            const ctx = layer.ctx;
+            ctx.globalAlpha = brushOpacity;
+            ctx.strokeStyle = currentColor;
+            if (currentTool === 'pencil') {
+              ctx.lineWidth = Math.max(1, brushSize / 2);
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.beginPath();
+              ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
+              ctx.fill();
+            } else if (currentTool === 'brush') {
+              drawWithBrushType(ctx, lastX, lastY, lastX, lastY);
+            } else if (currentTool === 'eraser') {
+              ctx.globalCompositeOperation = 'destination-out';
+              ctx.lineWidth = brushSize;
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.beginPath();
+              ctx.arc(lastX, lastY, brushSize / 2, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.globalCompositeOperation = 'source-over';
+            }
+            ctx.globalAlpha = 1;
+          } else {
+            startDrawing(e);
+          }
+        } else {
+          startDrawing(e);
+        }
       });
+      newCanvas.addEventListener('mouseup', stopDrawing);
+      newCanvas.addEventListener('mouseleave', stopDrawing);
+      newCanvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : newFrameIndex;
+        handleZoom(e, frameIndex);
+      });
+      newCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const touch = e.touches[0];
+        if (!touch) return;
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing()) {
+          mobileStartDrawing(newCanvas, touch.clientX, touch.clientY);
+          return;
+        }
+        
+        // Desktop/complex mode fallback
+        const touchEvent = {
+          target: newCanvas,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          preventDefault: () => {},
+          type: 'touchstart'
+        };
+        startDrawing(touchEvent);
+      }, { passive: false });
+      newCanvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const touch = e.touches[0];
+        if (!touch) return;
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileDraw(newCanvas, touch.clientX, touch.clientY);
+          return;
+        }
+        
+        // Desktop/complex mode fallback
+        if (!isDrawing) return;
+        const touchEvent = {
+          target: newCanvas,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          preventDefault: () => {},
+          type: 'touchmove'
+        };
+        draw(touchEvent);
+      }, { passive: false });
+      newCanvas.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileStopDrawing();
+          return;
+        }
+        
+        stopDrawing();
+      }, { passive: false });
+      newCanvas.addEventListener('touchcancel', (e) => {
+        e.preventDefault();
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileStopDrawing();
+          return;
+        }
+        
+        stopDrawing();
+      }, { passive: false });
       
       // Add to canvas arrays
       canvases.push(newCanvas);
@@ -21304,15 +21619,9 @@
         const canvasGrid = document.querySelector('.canvas-grid');
         if (!canvasGrid) return;
         const addFrameContainer = canvasGrid.querySelector('.add-frame-container');
-        // Remove legacy brush listeners from old square frame canvases before rebuilding
-        detachAllBrushCanvasListeners();
         // Remove all existing frame containers (keep add-frame)
         canvasGrid.querySelectorAll('.canvas-container').forEach(el => {
-          if (!el.classList.contains('add-frame-container')) {
-            const legacyCanvas = el.querySelector('canvas[id^="canvas-"]');
-            if (legacyCanvas) detachBrushCanvasListeners(legacyCanvas);
-            el.remove();
-          }
+          if (!el.classList.contains('add-frame-container')) el.remove();
         });
         // Create containers for each frame
         const target = getTargetCanvasSizeForViewport(currentViewport);
@@ -21353,10 +21662,128 @@
           container.appendChild(onion);
           canvasGrid.insertBefore(container, addFrameContainer);
           // Attach canvas interaction listeners (match addNewFrame/appendFrameFromSourceFrame behavior)
-          attachBrushCanvasListeners(canvas, () => {
-            const idx = canvases.indexOf(canvas);
-            return idx !== -1 ? idx : i;
+          canvas.addEventListener('mousedown', (e) => {
+            const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : i;
+            if (frameIndex !== currentFrame) {
+              currentFrame = frameIndex;
+              document.querySelectorAll('.canvas-container').forEach((el, idx) => {
+                el.classList.toggle('active', idx === frameIndex);
+              });
+              document.querySelectorAll('.timeline-frame').forEach((el, idx) => {
+                el.classList.toggle('active', idx === frameIndex);
+              });
+              const infoEl = document.getElementById('current-frame-info');
+              if (infoEl) infoEl.textContent = frameIndex + 1;
+              if (isDrawing) {
+                const coords = getCanvasCoordinates(canvases[frameIndex] || canvas, e.clientX, e.clientY);
+                lastX = coords.x;
+                lastY = coords.y;
+                const layer = frameLayers[frameIndex][currentLayer];
+                const ctx = layer.ctx;
+                ctx.globalAlpha = brushOpacity;
+                ctx.strokeStyle = currentColor;
+                if (currentTool === 'pencil') {
+                  ctx.lineWidth = Math.max(1, brushSize / 2);
+                  ctx.lineCap = 'round';
+                  ctx.lineJoin = 'round';
+                  ctx.beginPath();
+                  ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
+                  ctx.fill();
+                } else if (currentTool === 'brush') {
+                  drawWithBrushType(ctx, lastX, lastY, lastX, lastY);
+                } else if (currentTool === 'eraser') {
+                  ctx.globalCompositeOperation = 'destination-out';
+                  ctx.lineWidth = brushSize;
+                  ctx.lineCap = 'round';
+                  ctx.lineJoin = 'round';
+                  ctx.beginPath();
+                  ctx.arc(lastX, lastY, brushSize / 2, 0, Math.PI * 2);
+                  ctx.fill();
+                  ctx.globalCompositeOperation = 'source-over';
+                }
+                ctx.globalAlpha = 1;
+              } else {
+                startDrawing(e);
+              }
+            } else {
+              startDrawing(e);
+            }
           });
+          canvas.addEventListener('mouseup', stopDrawing);
+          canvas.addEventListener('mouseleave', stopDrawing);
+          canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : i;
+            handleZoom(e, frameIndex);
+          });
+          canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const touch = e.touches[0];
+            if (!touch) return;
+            
+            // Use simplified mobile drawing for phone viewport
+            if (shouldUseMobileTouchDrawing()) {
+              mobileStartDrawing(canvas, touch.clientX, touch.clientY);
+              return;
+            }
+            
+            // Desktop/complex mode fallback
+            const touchEvent = {
+              target: canvas,
+              clientX: touch.clientX,
+              clientY: touch.clientY,
+              preventDefault: () => {},
+              type: 'touchstart'
+            };
+            startDrawing(touchEvent);
+          }, { passive: false });
+          canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            const touch = e.touches[0];
+            if (!touch) return;
+            
+            // Use simplified mobile drawing for phone viewport
+            if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+              mobileDraw(canvas, touch.clientX, touch.clientY);
+              return;
+            }
+            
+            // Desktop/complex mode fallback
+            if (!isDrawing) return;
+            const touchEvent = {
+              target: canvas,
+              clientX: touch.clientX,
+              clientY: touch.clientY,
+              preventDefault: () => {},
+              type: 'touchmove'
+            };
+            draw(touchEvent);
+          }, { passive: false });
+          canvas.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // Use simplified mobile drawing for phone viewport
+            if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+              mobileStopDrawing();
+              return;
+            }
+            
+            stopDrawing();
+          }, { passive: false });
+          canvas.addEventListener('touchcancel', (e) => {
+            e.preventDefault();
+            
+            // Use simplified mobile drawing for phone viewport
+            if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+              mobileStopDrawing();
+              return;
+            }
+            
+            stopDrawing();
+          }, { passive: false });
           // DnD handlers
           container.addEventListener('dragover', (e) => { e.preventDefault(); });
           container.addEventListener('drop', (e) => {
@@ -21456,10 +21883,127 @@
       canvases.push(newCanvas);
       contexts.push(newCtx);
       // Interaction parity with existing frames
-      attachBrushCanvasListeners(newCanvas, () => {
-        const idx = canvases.indexOf(newCanvas);
-        return idx !== -1 ? idx : newFrameIndex;
+      newCanvas.addEventListener('mousedown', (e) => {
+        const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : newFrameIndex;
+        if (frameIndex !== currentFrame) {
+          currentFrame = frameIndex;
+          document.querySelectorAll('.canvas-container').forEach((el, i) => {
+            el.classList.toggle('active', i === frameIndex);
+          });
+          document.querySelectorAll('.timeline-frame').forEach((el, i) => {
+            el.classList.toggle('active', i === frameIndex);
+          });
+          document.getElementById('current-frame-info').textContent = frameIndex + 1;
+          if (isDrawing) {
+            const coords = getCanvasCoordinates(canvases[frameIndex], e.clientX, e.clientY);
+            lastX = coords.x;
+            lastY = coords.y;
+            const layer = frameLayers[frameIndex][currentLayer];
+            const ctx = layer.ctx;
+            ctx.globalAlpha = brushOpacity;
+            ctx.strokeStyle = currentColor;
+            if (currentTool === 'pencil') {
+              ctx.lineWidth = Math.max(1, brushSize / 2);
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.beginPath();
+              ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
+              ctx.fill();
+            } else if (currentTool === 'brush') {
+              drawWithBrushType(ctx, lastX, lastY, lastX, lastY);
+            } else if (currentTool === 'eraser') {
+              ctx.globalCompositeOperation = 'destination-out';
+              ctx.lineWidth = brushSize;
+              ctx.lineCap = 'round';
+              ctx.lineJoin = 'round';
+              ctx.beginPath();
+              ctx.arc(lastX, lastY, brushSize / 2, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.globalCompositeOperation = 'source-over';
+            }
+            ctx.globalAlpha = 1;
+          } else {
+            startDrawing(e);
+          }
+        } else {
+          startDrawing(e);
+        }
       });
+      newCanvas.addEventListener('mouseup', stopDrawing);
+      newCanvas.addEventListener('mouseleave', stopDrawing);
+      newCanvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : newFrameIndex;
+        handleZoom(e, frameIndex);
+      });
+      newCanvas.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const touch = e.touches[0];
+        if (!touch) return;
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing()) {
+          mobileStartDrawing(newCanvas, touch.clientX, touch.clientY);
+          return;
+        }
+        
+        // Desktop/complex mode fallback
+        const touchEvent = {
+          target: newCanvas,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          preventDefault: () => {},
+          type: 'touchstart'
+        };
+        startDrawing(touchEvent);
+      }, { passive: false });
+      newCanvas.addEventListener('touchmove', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const touch = e.touches[0];
+        if (!touch) return;
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileDraw(newCanvas, touch.clientX, touch.clientY);
+          return;
+        }
+        
+        // Desktop/complex mode fallback
+        if (!isDrawing) return;
+        const touchEvent = {
+          target: newCanvas,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          preventDefault: () => {},
+          type: 'touchmove'
+        };
+        draw(touchEvent);
+      }, { passive: false });
+      newCanvas.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileStopDrawing();
+          return;
+        }
+        
+        stopDrawing();
+      }, { passive: false });
+      newCanvas.addEventListener('touchcancel', (e) => {
+        e.preventDefault();
+        
+        // Use simplified mobile drawing for phone viewport
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileStopDrawing();
+          return;
+        }
+        
+        stopDrawing();
+      }, { passive: false });
       // DnD on container
       newFrameContainer.addEventListener('dragover', (e) => { e.preventDefault(); });
       newFrameContainer.addEventListener('dragenter', (e) => { e.preventDefault(); });
