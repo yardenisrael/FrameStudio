@@ -234,6 +234,12 @@
       color: #e5e5e5;
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       overflow-x: hidden;
+      max-width: 100vw;
+    }
+    
+    html {
+      overflow-x: hidden;
+      max-width: 100vw;
     }
 
 
@@ -309,6 +315,15 @@
 
     /* Mobile responsive styles */
     @media (max-width: 768px) {
+      body, html {
+        max-width: 100vw;
+        overflow-x: hidden !important;
+      }
+      
+      * {
+        max-width: 100vw;
+      }
+      
       .menu-toggle {
         display: flex;
         align-items: center;
@@ -349,14 +364,6 @@
         transform: translateX(0);
       }
 
-      /* Adjust viewport toggle for mobile */
-      .viewport-toggle {
-        position: relative;
-        left: 0;
-        transform: none;
-        margin: 0 auto;
-      }
-
       .viewport-btn {
         padding: 6px 12px;
         font-size: 12px;
@@ -367,19 +374,181 @@
         grid-template-columns: 1fr !important;
       }
 
-      /* Adjust top toolbar for mobile */
+      /* Adjust top toolbar for mobile - expanded to align with cutout toggle buttons */
       .panel:first-child {
         flex-direction: column;
-        gap: 12px;
+        gap: 10px;
         align-items: stretch;
+        padding-left: 12px !important;
+        padding-right: 12px !important;
+        padding-top: 12px;
+        padding-bottom: 16px;
+        min-height: 140px;
       }
 
       .panel:first-child > div:first-child {
         justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        order: 1;
       }
 
+      /* Move action buttons (upgrade/export) to second position */
       .panel:first-child > div:last-child {
         justify-content: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        order: 2;
+      }
+      
+      /* Move viewport toggle below the action buttons */
+      .panel:first-child .viewport-toggle {
+        position: relative;
+        left: auto;
+        transform: none;
+        margin: 0 auto;
+        order: 3;
+      }
+      
+      /* Make header items wrap and have smaller spacing */
+      .panel:first-child .flex {
+        flex-wrap: wrap;
+        gap: 8px !important;
+      }
+      
+      .panel:first-child a,
+      .panel:first-child button {
+        margin-left: 0 !important;
+        font-size: 11px;
+      }
+      
+      .panel:first-child .divider {
+        display: none;
+      }
+      
+      .panel:first-child .text-sm {
+        font-size: 11px;
+        text-align: center;
+      }
+      
+      .panel:first-child h1 {
+        font-size: 16px;
+      }
+      
+      /* Responsive export button */
+      .panel:first-child button[onclick="exportAnimation()"] {
+        padding: 8px 12px;
+        font-size: 12px;
+      }
+      
+      /* Responsive upgrade button */
+      .upgrade-button {
+        padding: 6px 12px !important;
+        height: auto !important;
+      }
+      
+      .upgrade-button .upgrade-text {
+        font-size: 11px !important;
+      }
+      
+      .upgrade-button .upgrade-pricing {
+        font-size: 9px !important;
+      }
+      
+      /* Hide upgrade button on mobile */
+      .panel:first-child .upgrade-button {
+        display: none !important;
+      }
+      
+      /* Hide login, features, tutorials, and subtitle on mobile - keep only contact */
+      .panel:first-child #login-wrapper,
+      .panel:first-child a[href="features.html"],
+      .panel:first-child a[href="tutorials.html"],
+      .panel:first-child > div:first-child > span.text-sm {
+        display: none !important;
+      }
+      
+      /* Center the export button on mobile */
+      .panel:first-child > div:last-child {
+        justify-content: center !important;
+        width: 100%;
+      }
+      
+      .panel:first-child button[onclick="exportAnimation()"] {
+        width: auto;
+        padding: 8px 16px;
+      }
+      
+      /* Adjust cutout mobile toggle positions to align with expanded header */
+      .cutout-mobile-left-toggle {
+        top: 148px !important;
+      }
+      
+      .cutout-mobile-right-toggle {
+        top: 148px !important;
+      }
+      
+      /* Adjust regular menu toggle positions */
+      .menu-toggle-left {
+        top: 80px !important;
+      }
+      
+      .menu-toggle-right {
+        top: 80px !important;
+      }
+      
+      /* Enable touch drawing on canvas while allowing page scrolling */
+      canvas {
+        touch-action: none;
+      }
+      
+      .canvas-container {
+        touch-action: none;
+      }
+      
+      body {
+        touch-action: pan-y pan-x;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      .flex.flex-col.h-screen {
+        touch-action: pan-y;
+        -webkit-overflow-scrolling: touch;
+      }
+      
+      /* Ensure all containers respect viewport width */
+      .flex {
+        max-width: 100vw;
+      }
+      
+      .panel {
+        max-width: 100vw;
+        box-sizing: border-box;
+      }
+      
+      /* Timeline container adjustments */
+      #timeline-container {
+        max-width: 100%;
+      }
+      
+      .timeline-scroll {
+        max-width: 100%;
+      }
+      
+      /* Canvas container adjustments */
+      .canvas-container {
+        max-width: 100% !important;
+      }
+      
+      /* Preview container adjustments */
+      #preview-container {
+        max-width: 100% !important;
+      }
+      
+      /* Ensure images don't overflow */
+      img {
+        max-width: 100%;
+        height: auto;
       }
       
       /* Cut Out mobile-specific toggles (shown only in cutout-mobile-mode) */
@@ -1446,6 +1615,13 @@
 
     .layer-item:hover .layer-delete {
       opacity: 1;
+    }
+    
+    /* Main container constraints to prevent horizontal scrolling */
+    .flex.flex-col.h-screen {
+      max-width: 100vw;
+      overflow-x: hidden;
+      box-sizing: border-box;
     }
 
     /* Improved grid layout for better responsiveness */
@@ -2685,12 +2861,6 @@
                       <polygon points="6,6 16,12 6,18" />
                     </svg>
                   </button>
-                </div>
-              </div>
-              <div class="justify-self-end">
-                <div class="flex items-center gap-2">
-                  <button class="tool-btn text-xs py-1" onclick="cutoutAddKey()">Add Key</button>
-                  <button class="tool-btn text-xs py-1" onclick="cutoutClearKeys()">Clear Keys</button>
                 </div>
               </div>
             </div>
@@ -4076,6 +4246,10 @@
 
     function cutoutStartPlayback() {
       cutoutIsPlaying = true;
+      // Hide bones overlay during playback - bones should only be visible during editing
+      if (cutoutBonesOverlayCanvas) {
+        cutoutBonesOverlayCanvas.style.display = 'none';
+      }
       // Ensure any active/pending selection is committed before playback
       try {
         if (typeof cutoutSelectedObject !== 'undefined' && cutoutSelectedObject) {
@@ -4114,6 +4288,13 @@
         cancelAnimationFrame(cutoutRAF);
         cutoutRAF = null;
       }
+      // Show bones overlay when paused if bones tool is active and bones exist
+      if (cutoutBonesOverlayCanvas && currentTool === 'bones' && cutoutBones.length > 0) {
+        cutoutBonesOverlayCanvas.style.display = '';
+        // Update bone positions based on current time keyframes
+        updateCutoutBonePositionsFromKeyframes();
+        drawCutoutBonesOverlay();
+      }
       const btn = document.getElementById('cutout-play-btn');
       if (btn) btn.textContent = 'Play';
       // Sync scroll button icon if repurposed in Cut Out mode
@@ -4144,15 +4325,6 @@
       if (btnRev) btnRev.classList.toggle('active', mode === 'reverse');
     }
 
-    function cutoutAddKey() {
-      saveState();
-      const t = cutoutCurrentTime || 0;
-      cutoutKeys.push({ time: Math.max(0, Math.min(cutoutDuration, t)) });
-      cutoutKeys.sort((a, b) => a.time - b.time);
-      drawCutoutTimeline();
-      saveState();
-    }
-
     // Keep cutout sizing in sync on window resize
     window.addEventListener('resize', () => {
       if (isCutOutMode) {
@@ -4166,13 +4338,6 @@
       }
     });
 
-    function cutoutClearKeys() {
-      saveState();
-      cutoutKeys = [];
-      drawCutoutTimeline();
-      saveState();
-    }
-
     function cutoutSetTimeFromEvent(e) {
       const track = document.getElementById('cutout-ruler-area');
       if (!track) return;
@@ -4181,6 +4346,11 @@
       const pct = Math.max(0, Math.min(1, x / rect.width));
       cutoutCurrentTime = pct * cutoutDuration;
       updateCutoutScrubber();
+      // Update bone positions from keyframes when scrubbing timeline
+      if (currentTool === 'bones' && cutoutBones.length > 0 && !cutoutIsPlaying) {
+        updateCutoutBonePositionsFromKeyframes();
+        drawCutoutBonesOverlay();
+      }
     }
 
     function cutoutBeginDrag(e) {
@@ -4319,33 +4489,6 @@
       }
       // Render existing clips positioned by current rect
       renderCutoutClips();
-      // Draw key markers spanning the track height
-      for (const k of cutoutKeys) {
-        const pct = (k.time / cutoutDuration);
-        const left = Math.max(0, Math.min(rect.width, pct * rect.width));
-        const m = document.createElement('div');
-        m.style.position = 'absolute';
-        m.style.left = (left - 2) + 'px';
-        m.style.top = '0';
-        m.style.bottom = '0';
-        m.style.width = '4px';
-        m.style.background = '#ef4444';
-        m.style.boxShadow = '0 0 6px rgba(239,68,68,0.5)';
-        m.style.pointerEvents = 'auto';
-        m.style.cursor = 'pointer';
-        const tStr = String(Math.max(0, Math.min(cutoutDuration, k.time)).toFixed(4));
-        m.setAttribute('data-key-time', tStr);
-        // Allow dragging the timeline even when pressing on a bar
-        m.addEventListener('mousedown', (e) => {
-          cutoutBeginDrag(e);
-        });
-        m.addEventListener('click', (e) => {
-          e.stopPropagation();
-          const t = k.time;
-          jumpToCutoutTime(t);
-        });
-        keysContainer.appendChild(m);
-      }
       // Draw property key icons (diamonds) just above top line
       let propKeysContainer = document.getElementById('cutout-prop-keys');
       if (!propKeysContainer) {
@@ -4433,6 +4576,11 @@
       const t = Math.max(0, Math.min(cutoutDuration, time || 0));
       cutoutCurrentTime = t;
       updateCutoutScrubber();
+      // Update bone positions from keyframes when jumping to a time
+      if (currentTool === 'bones' && cutoutBones.length > 0 && !cutoutIsPlaying) {
+        updateCutoutBonePositionsFromKeyframes();
+        drawCutoutBonesOverlay();
+      }
     }
     
     /* Removed timeline node flicker effect */
@@ -4545,8 +4693,9 @@
             value: lerp(a.value, b.value, alpha)
           }));
           if (op) { drawObj.opacity = Math.max(0, Math.min(1, op.value)); }
-          // Apply bone transformation AFTER keyframes to keep bone-pinned position consistent
-          // This ensures the object stays at its bone-adjusted position even when keyframes exist
+          // Apply bone transformation logic:
+          // - During ACTIVE bone manipulation: use current obj values (set by drag handler) and bone formula
+          // - During PLAYBACK: use keyframed position/rotation if keyframes exist
           try {
             let linkedBone = null;
             for (let bi = 0; bi < cutoutBones.length; bi++) {
@@ -4558,25 +4707,43 @@
               }
             }
             if (linkedBone && typeof linkedBone.pinnedLocalX === 'number' && typeof linkedBone.pinnedLocalY === 'number') {
-              const boneBaseW = (drawObj.drawW != null) ? drawObj.drawW : ((drawObj.img && (drawObj.img.naturalWidth || drawObj.img.width || drawObj.img.videoWidth)) || 0);
-              const boneBaseH = (drawObj.drawH != null) ? drawObj.drawH : ((drawObj.img && (drawObj.img.naturalHeight || drawObj.img.height || drawObj.img.videoHeight)) || 0);
-              const boneEffScaleX = (typeof drawObj.scaleX === 'number' ? drawObj.scaleX : 1);
-              const boneEffScaleY = (typeof drawObj.scaleY === 'number' ? drawObj.scaleY : 1);
-              const boneW = boneBaseW * (drawObj.scale || 1) * boneEffScaleX;
-              const boneH = boneBaseH * (drawObj.scale || 1) * boneEffScaleY;
-              const bonePx = linkedBone.pinnedLocalX;
-              const bonePy = linkedBone.pinnedLocalY;
-              const boneRot = drawObj.rotation || 0;
-              const boneCos = Math.cos(boneRot), boneSin = Math.sin(boneRot);
-              const boneRx = bonePx * boneCos - bonePy * boneSin;
-              const boneRy = bonePx * boneSin + bonePy * boneCos;
-              const boneCenterX = linkedBone.startX - boneRx;
-              const boneCenterY = linkedBone.startY - boneRy;
-              drawObj.x = boneCenterX - boneW / 2;
-              drawObj.y = boneCenterY - boneH / 2;
-              // Also update the source object to keep state consistent
-              obj.x = drawObj.x;
-              obj.y = drawObj.y;
+              // Check if we're actively manipulating bones
+              const isActivelyManipulatingBones = !!(cutoutIsDraggingBoneHandle || cutoutBonesModeObjDrag || cutoutIsRotatingBone);
+              // Check if this object has position keyframes
+              const hasPositionKeyframes = keys.position && Array.isArray(keys.position) && keys.position.length > 0;
+              
+              if (isActivelyManipulatingBones) {
+                // ACTIVE MANIPULATION: Use current obj values (from drag handler) directly
+                // Don't use keyframed values - use the real-time values set by the drag handler
+                drawObj.rotation = Number.isFinite(obj.rotation) ? obj.rotation : 0;
+                drawObj.x = Number.isFinite(obj.x) ? obj.x : 0;
+                drawObj.y = Number.isFinite(obj.y) ? obj.y : 0;
+                // Also sync back to source object
+                obj.x = drawObj.x;
+                obj.y = drawObj.y;
+              } else if (!hasPositionKeyframes) {
+                // NO KEYFRAMES, NOT MANIPULATING: Use bone formula for position
+                const boneBaseW = (drawObj.drawW != null) ? drawObj.drawW : ((drawObj.img && (drawObj.img.naturalWidth || drawObj.img.width || drawObj.img.videoWidth)) || 0);
+                const boneBaseH = (drawObj.drawH != null) ? drawObj.drawH : ((drawObj.img && (drawObj.img.naturalHeight || drawObj.img.height || drawObj.img.videoHeight)) || 0);
+                const boneEffScaleX = (typeof drawObj.scaleX === 'number' ? drawObj.scaleX : 1);
+                const boneEffScaleY = (typeof drawObj.scaleY === 'number' ? drawObj.scaleY : 1);
+                const boneW = boneBaseW * (drawObj.scale || 1) * boneEffScaleX;
+                const boneH = boneBaseH * (drawObj.scale || 1) * boneEffScaleY;
+                const bonePx = linkedBone.pinnedLocalX;
+                const bonePy = linkedBone.pinnedLocalY;
+                const boneRot = drawObj.rotation || 0;
+                const boneCos = Math.cos(boneRot), boneSin = Math.sin(boneRot);
+                const boneRx = bonePx * boneCos - bonePy * boneSin;
+                const boneRy = bonePx * boneSin + bonePy * boneCos;
+                const boneCenterX = linkedBone.startX - boneRx;
+                const boneCenterY = linkedBone.startY - boneRy;
+                drawObj.x = boneCenterX - boneW / 2;
+                drawObj.y = boneCenterY - boneH / 2;
+                // Also update the source object to keep state consistent
+                obj.x = drawObj.x;
+                obj.y = drawObj.y;
+              }
+              // When hasPositionKeyframes is true AND not actively manipulating, the keyframed values are used (already set above)
             }
           } catch (_boneErr) {}
           // Composite animated object
@@ -4829,6 +4996,9 @@
     let zoomDragObjScale = 1;
     // Buffer key updates during drags and commit once on release to reduce per-move churn
     let cutoutPendingDragKeys = { position: null, rotation: null, zoom: null, opacity: null };
+    // Buffer key updates for connected parent bone objects during bone rotation
+    // This ensures linked bones' objects also get keyframed during animation
+    let cutoutPendingParentKeys = []; // Array of { objectRef, position: {time,x,y}, rotation: {time,deg} }
     // Detect click vs drag on property keys (diamonds)
     let propKeyDragDidMove = false;
     // Throttle cutout preview redraws during brush moves to one per animation frame
@@ -6290,14 +6460,67 @@
         clip.start = Math.max(minStart, Math.min(clip.start, Math.max(0, timeSec - epsilon)));
       }
     }
-    function addOrUpdatePropKeyAt(prop, time, values) {
-      const arr = getOrCreatePropKeys(prop);
+    function addOrUpdatePropKeyAt(prop, time, values, targetKeys) {
+      // targetKeys allows specifying a different keys object (for parent objects in bone chains)
+      const arr = targetKeys ? (targetKeys[prop] || (targetKeys[prop] = [])) : getOrCreatePropKeys(prop);
       const epsilon = 1 / 60;
       const idx = arr.findIndex(k => Math.abs(k.time - time) <= epsilon);
+      
+      // For position keyframes, also store bone state if the object has a bone attached
+      let boneState = null;
+      if (prop === 'position') {
+        const activeClip = getActiveCutoutClipIndex();
+        const clip = cutoutClips[activeClip];
+        // Find the target object - either from targetKeys or cutoutSelectedObject
+        let targetObj = null;
+        if (targetKeys) {
+          // Search all objects for one whose keys match targetKeys
+          if (clip && Array.isArray(clip.objects)) {
+            targetObj = clip.objects.find(o => o.keys === targetKeys);
+          }
+          // Also check bones' objectRef.keys
+          if (!targetObj) {
+            for (let bi = 0; bi < cutoutBones.length; bi++) {
+              const bone = cutoutBones[bi];
+              if (bone && bone.objectRef && bone.objectRef.keys === targetKeys) {
+                targetObj = bone.objectRef;
+                break;
+              }
+            }
+          }
+        } else {
+          targetObj = cutoutSelectedObject;
+        }
+        
+        if (targetObj) {
+          // Find bone attached to this object
+          for (let bi = 0; bi < cutoutBones.length; bi++) {
+            const bone = cutoutBones[bi];
+            if (!bone || bone.clipIndex !== activeClip) continue;
+            if (bone.objectRef === targetObj) {
+              // Store bone state with this keyframe
+              boneState = {
+                boneIndex: bi,
+                startX: bone.startX,
+                startY: bone.startY,
+                endX: bone.endX,
+                endY: bone.endY
+              };
+              break;
+            }
+          }
+        }
+      }
+      
+      const keyData = { time, ...values };
+      if (boneState) {
+        keyData.boneState = boneState;
+      }
+      
       if (idx >= 0) {
-        Object.assign(arr[idx], { time, ...values });
+        Object.assign(arr[idx], keyData);
       } else {
-        arr.push({ time, ...values });
+        arr.push(keyData);
       }
       arr.sort((a, b) => a.time - b.time);
       // Ensure the underlying clip extends to cover this key's time
@@ -8819,6 +9042,16 @@
               cutoutIsRotatingBone = true;
               cutoutBoneDrag = handle;
               cutoutIsDraggingBoneHandle = true;
+              // IMPORTANT: Sync cutoutSelectedObject/ActiveObject/PropertyKeys to the bone's object
+              // so keyframes are recorded to the correct segmented object, not the source image
+              cutoutSelectedObject = b.objectRef;
+              cutoutActiveObject = b.objectRef;
+              if (!b.objectRef.keys) {
+                b.objectRef.keys = { position: [], zoom: [], rotation: [], opacity: [] };
+              }
+              cutoutPropertyKeys = b.objectRef.keys;
+              // Clear any pending parent keys from previous rotation
+              cutoutPendingParentKeys = [];
               // Calculate initial angle from bone start to mouse
               const startAngle = Math.atan2(y - b.startY, x - b.startX);
               // Store initial state for connected parent bone if this bone's END is connected to a START
@@ -8856,6 +9089,19 @@
           
           cutoutBoneDrag = handle;
           cutoutIsDraggingBoneHandle = true;
+          // IMPORTANT: Sync cutoutSelectedObject/ActiveObject/PropertyKeys to the bone's object
+          // so any keyframes are recorded to the correct segmented object
+          try {
+            const bSync = cutoutBones[handle.boneIndex];
+            if (bSync && bSync.objectRef) {
+              cutoutSelectedObject = bSync.objectRef;
+              cutoutActiveObject = bSync.objectRef;
+              if (!bSync.objectRef.keys) {
+                bSync.objectRef.keys = { position: [], zoom: [], rotation: [], opacity: [] };
+              }
+              cutoutPropertyKeys = bSync.objectRef.keys;
+            }
+          } catch (_syncErr) {}
           // If rotating from end handle, capture pinned local offset so start node stays pinned during rotation
           try {
             if (handle.handle === 'end') {
@@ -8933,6 +9179,14 @@
               // Start dragging this object
               isCutoutDrawing = true;
               try { saveState(); } catch (_e) {}
+              // IMPORTANT: Sync cutoutSelectedObject/ActiveObject/PropertyKeys to the bone's object
+              // so keyframes are recorded to the correct segmented object, not the source image
+              cutoutSelectedObject = obj;
+              cutoutActiveObject = obj;
+              if (!obj.keys) {
+                obj.keys = { position: [], zoom: [], rotation: [], opacity: [] };
+              }
+              cutoutPropertyKeys = obj.keys;
               cutoutBonesModeObjDrag = {
                 boneIndex: bi,
                 offsetX: x - obj.x,
@@ -9057,27 +9311,28 @@
           const b = cutoutBones[cutoutBoneRotationData.boneIndex];
           if (b && b.objectRef) {
             const obj = b.objectRef;
-            // Calculate current angle from bone start to mouse
+            // Calculate current angle from bone start to mouse - this IS the bone angle
             const currentAngle = Math.atan2(y - b.startY, x - b.startX);
             const angleDelta = currentAngle - cutoutBoneRotationData.startAngle;
             
-            // Update object rotation (bone start is the anchor point)
-            obj.rotation = cutoutBoneRotationData.initialObjRotation + angleDelta;
-            
-            // Rotate the bone end around bone start
-            const boneLength = b.restLength || Math.hypot(b.endX - b.startX, b.endY - b.startY);
-            const newBoneAngle = cutoutBoneRotationData.initialBoneAngle + angleDelta;
-            b.endX = b.startX + Math.cos(newBoneAngle) * boneLength;
-            b.endY = b.startY + Math.sin(newBoneAngle) * boneLength;
-            
-            // Keep the object positioned so bone start stays at the same world position
-            // Calculate where bone start would be on the object at its current rotation
+            // Get object dimensions
             const baseW = (obj && obj.drawW != null) ? obj.drawW : ((obj && obj.img && (obj.img.naturalWidth || obj.img.width || obj.img.videoWidth)) || 0);
             const baseH = (obj && obj.drawH != null) ? obj.drawH : ((obj && obj.img && (obj.img.naturalHeight || obj.img.height || obj.img.videoHeight)) || 0);
             const effScaleX = (typeof obj.scaleX === 'number' ? obj.scaleX : 1);
             const effScaleY = (typeof obj.scaleY === 'number' ? obj.scaleY : 1);
             const w = baseW * (obj.scale || 1) * effScaleX;
             const h = baseH * (obj.scale || 1) * effScaleY;
+            
+            // === CHILD BONE (the one being rotated) ===
+            // The bone START is the pivot/anchor - it stays fixed
+            // The bone END rotates around the START
+            const boneLength = b.restLength || Math.hypot(b.endX - b.startX, b.endY - b.startY);
+            const newBoneAngle = cutoutBoneRotationData.initialBoneAngle + angleDelta;
+            b.endX = b.startX + Math.cos(newBoneAngle) * boneLength;
+            b.endY = b.startY + Math.sin(newBoneAngle) * boneLength;
+            
+            // Object rotation follows the bone angle change directly
+            obj.rotation = cutoutBoneRotationData.initialObjRotation + angleDelta;
             
             // Use bone's pinnedLocal if available, otherwise compute from center
             let px = (typeof b.pinnedLocalX === 'number') ? b.pinnedLocalX : 0;
@@ -9094,7 +9349,7 @@
               py = b.pinnedLocalY = -dx0 * sin0 + dy0 * cos0;
             }
             
-            // Compute new object position to keep bone start pinned at world position
+            // Compute object position to keep bone START pinned at its world position
             const rot = obj.rotation;
             const cos = Math.cos(rot), sin = Math.sin(rot);
             const rx = px * cos - py * sin;
@@ -9103,12 +9358,6 @@
             const centerY = b.startY - ry;
             obj.x = centerX - w / 2;
             obj.y = centerY - h / 2;
-            // When recording, buffer position/rotation keys at current time so bone-driven edits keyframe transforms
-            if (cutoutRecorderArmed) {
-              if (!cutoutPendingDragKeys) cutoutPendingDragKeys = { position: null, rotation: null, zoom: null, opacity: null };
-              cutoutPendingDragKeys.position = { time: cutoutCurrentTime, x: obj.x, y: obj.y };
-              cutoutPendingDragKeys.rotation = { time: cutoutCurrentTime, deg: (obj.rotation || 0) * 180 / Math.PI };
-            }
             
             // Clamp bone endpoints to canvas
             try {
@@ -9120,35 +9369,45 @@
               }
             } catch (_e) {}
             
-            // If this bone's END is connected to another bone's START,
-            // then rotating this bone's START should also rotate the connected parent bone and its object
-            // The START of the bone whose END made the connection is the anchor for the tree branch
+            // When recording, buffer position/rotation keys
+            if (cutoutRecorderArmed) {
+              if (!cutoutPendingDragKeys) cutoutPendingDragKeys = { position: null, rotation: null, zoom: null, opacity: null };
+              cutoutPendingDragKeys.position = { time: cutoutCurrentTime, x: obj.x, y: obj.y };
+              cutoutPendingDragKeys.rotation = { time: cutoutCurrentTime, deg: (obj.rotation || 0) * 180 / Math.PI };
+            }
+            
+            // === PARENT BONE (connected via child.END = parent.START) ===
+            // When this child's END is connected to a parent's START, the parent bone/object
+            // should also rotate. The pivot for the parent is the CONNECTION POINT (child.END = parent.START)
             const parentInit = cutoutBoneRotationData.parentInitial;
             if (parentInit && b.attachedAt === 'end' && b.parentAttach === 'start' && b.parentBoneIndex != null) {
               const activeClipRot = getActiveCutoutClipIndex();
               const parentBone = cutoutBones[b.parentBoneIndex];
               if (parentBone && parentBone.clipIndex === activeClipRot && parentBone.objectRef) {
                 const parentObj = parentBone.objectRef;
-                const pivotX = b.startX;
-                const pivotY = b.startY;
-                const cosA = Math.cos(angleDelta), sinA = Math.sin(angleDelta);
                 
-                // Rotate parent bone endpoints from INITIAL positions around this bone's START (the anchor)
-                const dxPS = parentInit.boneStartX - pivotX;
-                const dyPS = parentInit.boneStartY - pivotY;
-                parentBone.startX = pivotX + dxPS * cosA - dyPS * sinA;
-                parentBone.startY = pivotY + dxPS * sinA + dyPS * cosA;
+                // The connection point (child.END = parent.START) is the pivot for parent rotation
+                // First, set parent.START to follow child.END (the connection)
+                parentBone.startX = b.endX;
+                parentBone.startY = b.endY;
                 
-                const dxPE = parentInit.boneEndX - pivotX;
-                const dyPE = parentInit.boneEndY - pivotY;
-                parentBone.endX = pivotX + dxPE * cosA - dyPE * sinA;
-                parentBone.endY = pivotY + dxPE * sinA + dyPE * cosA;
+                // Parent bone END rotates around parent bone START (the connection point)
+                const parentBoneLength = parentBone.restLength || Math.hypot(
+                  parentInit.boneEndX - parentInit.boneStartX, 
+                  parentInit.boneEndY - parentInit.boneStartY
+                );
+                const initialParentBoneAngle = Math.atan2(
+                  parentInit.boneEndY - parentInit.boneStartY,
+                  parentInit.boneEndX - parentInit.boneStartX
+                );
+                const newParentBoneAngle = initialParentBoneAngle + angleDelta;
+                parentBone.endX = parentBone.startX + Math.cos(newParentBoneAngle) * parentBoneLength;
+                parentBone.endY = parentBone.startY + Math.sin(newParentBoneAngle) * parentBoneLength;
                 
-                // Keep the connection: this bone's END stays at parent's START
-                b.endX = parentBone.startX;
-                b.endY = parentBone.startY;
+                // Parent object rotation follows the bone angle change
+                parentObj.rotation = parentInit.rotation + angleDelta;
                 
-                // Rotate parent object around the pivot (this bone's START) from INITIAL position
+                // Parent object position: keep parent bone START pinned at connection point
                 const baseWP = (parentObj.drawW != null) ? parentObj.drawW : ((parentObj.img && (parentObj.img.naturalWidth || parentObj.img.width)) || 0);
                 const baseHP = (parentObj.drawH != null) ? parentObj.drawH : ((parentObj.img && (parentObj.img.naturalHeight || parentObj.img.height)) || 0);
                 const effScaleXP = (typeof parentObj.scaleX === 'number' ? parentObj.scaleX : 1);
@@ -9156,44 +9415,54 @@
                 const wP = baseWP * (parentObj.scale || 1) * effScaleXP;
                 const hP = baseHP * (parentObj.scale || 1) * effScaleYP;
                 
-                // Use initial center position
-                const initialParentCenterX = parentInit.x + wP / 2;
-                const initialParentCenterY = parentInit.y + hP / 2;
+                // Use parent bone's pinnedLocal (relative to parent bone START)
+                let ppx = (typeof parentBone.pinnedLocalX === 'number') ? parentBone.pinnedLocalX : 0;
+                let ppy = (typeof parentBone.pinnedLocalY === 'number') ? parentBone.pinnedLocalY : 0;
+                if (typeof parentBone.pinnedLocalX !== 'number') {
+                  // Initialize from initial state
+                  const initCenterX = parentInit.x + wP / 2;
+                  const initCenterY = parentInit.y + hP / 2;
+                  const dx0 = parentInit.boneStartX - initCenterX;
+                  const dy0 = parentInit.boneStartY - initCenterY;
+                  const rot0 = parentInit.rotation;
+                  const cos0 = Math.cos(rot0), sin0 = Math.sin(rot0);
+                  ppx = parentBone.pinnedLocalX = dx0 * cos0 + dy0 * sin0;
+                  ppy = parentBone.pinnedLocalY = -dx0 * sin0 + dy0 * cos0;
+                }
                 
-                // Rotate initial parent center around pivot
-                const dxPC = initialParentCenterX - pivotX;
-                const dyPC = initialParentCenterY - pivotY;
-                const newParentCenterX = pivotX + dxPC * cosA - dyPC * sinA;
-                const newParentCenterY = pivotY + dxPC * sinA + dyPC * cosA;
-                parentObj.x = newParentCenterX - wP / 2;
-                parentObj.y = newParentCenterY - hP / 2;
-                
-                // Set parent's rotation absolutely from initial + delta (not incrementally)
-                parentObj.rotation = parentInit.rotation + angleDelta;
-                
-                // Update parent bone's local coordinates
-                const parentObjCenterX2 = parentObj.x + wP / 2;
-                const parentObjCenterY2 = parentObj.y + hP / 2;
-                const rotP = parentObj.rotation || 0;
+                // Position parent object to keep its bone START at the connection point
+                const rotP = parentObj.rotation;
                 const cosP = Math.cos(rotP), sinP = Math.sin(rotP);
-                const dxPSL = parentBone.startX - parentObjCenterX2;
-                const dyPSL = parentBone.startY - parentObjCenterY2;
-                parentBone.pinnedLocalX = dxPSL * cosP + dyPSL * sinP;
-                parentBone.pinnedLocalY = -dxPSL * sinP + dyPSL * cosP;
-                const dxPEL = parentBone.endX - parentObjCenterX2;
-                const dyPEL = parentBone.endY - parentObjCenterY2;
-                parentBone.endLocalX = dxPEL * cosP + dyPEL * sinP;
-                parentBone.endLocalY = -dxPEL * sinP + dyPEL * cosP;
+                const rxP = ppx * cosP - ppy * sinP;
+                const ryP = ppx * sinP + ppy * cosP;
+                const parentCenterX = parentBone.startX - rxP;
+                const parentCenterY = parentBone.startY - ryP;
+                parentObj.x = parentCenterX - wP / 2;
+                parentObj.y = parentCenterY - hP / 2;
                 
-                // Update this bone's end local coordinates
-                const objCenterX2 = obj.x + w / 2;
-                const objCenterY2 = obj.y + h / 2;
-                const rotB = obj.rotation || 0;
-                const cosB = Math.cos(rotB), sinB = Math.sin(rotB);
-                const dxBE = b.endX - objCenterX2;
-                const dyBE = b.endY - objCenterY2;
-                b.endLocalX = dxBE * cosB + dyBE * sinB;
-                b.endLocalY = -dxBE * sinB + dyBE * cosB;
+                // Clamp parent bone endpoints
+                try {
+                  const cw = cutoutCanvas ? cutoutCanvas.width : 0;
+                  const ch = cutoutCanvas ? cutoutCanvas.height : 0;
+                  if (cw && ch) {
+                    parentBone.endX = Math.max(0, Math.min(cw, parentBone.endX));
+                    parentBone.endY = Math.max(0, Math.min(ch, parentBone.endY));
+                  }
+                } catch (_e) {}
+                
+                // Record keyframes for parent object
+                if (cutoutRecorderArmed) {
+                  if (!parentObj.keys) {
+                    parentObj.keys = { position: [], zoom: [], rotation: [], opacity: [] };
+                  }
+                  let parentEntry = cutoutPendingParentKeys.find(e => e.objectRef === parentObj);
+                  if (!parentEntry) {
+                    parentEntry = { objectRef: parentObj };
+                    cutoutPendingParentKeys.push(parentEntry);
+                  }
+                  parentEntry.position = { time: cutoutCurrentTime, x: parentObj.x, y: parentObj.y };
+                  parentEntry.rotation = { time: cutoutCurrentTime, deg: (parentObj.rotation || 0) * 180 / Math.PI };
+                }
               }
             }
           }
@@ -9217,47 +9486,59 @@
           const isJointDrag = isHandleAttachedToParent || hasChildrenOnHandle;
           if (isJointDrag) {
             if (cutoutBoneDrag.handle === 'start') {
-              // Translate entire connected component within active clip (no rotation) — do not move attached objects
+              // Translate entire connected component within active clip (no rotation)
+              // ALSO move the attached objects with the bones
+              const dx = x - lastCutoutX;
+              const dy = y - lastCutoutY;
               const activeClipIdx = getActiveCutoutClipIndex();
               const queue = [cutoutBoneDrag.boneIndex];
               const visited = new Set();
+              const movedObjects = new Set(); // Track which objects we've already moved
               while (queue.length) {
                 const idx = queue.shift();
                 if (visited.has(idx)) continue;
                 visited.add(idx);
                 const n = cutoutBones[idx];
                 if (!n || n.clipIndex !== activeClipIdx) continue;
-                n.startX += (x - lastCutoutX); n.startY += (y - lastCutoutY);
-                n.endX += (x - lastCutoutX); n.endY += (y - lastCutoutY);
+                // Move bone endpoints
+                n.startX += dx; n.startY += dy;
+                n.endX += dx; n.endY += dy;
                 
-                // Clamp both endpoints to object bounds
+                // Move the attached object with the bone (preserve relative position)
                 const obj = n.objectRef;
-                if (obj) {
-                  const baseW = (obj.drawW != null) ? obj.drawW : ((obj.img && (obj.img.naturalWidth || obj.img.width)) || 0);
-                  const baseH = (obj.drawH != null) ? obj.drawH : ((obj.img && (obj.img.naturalHeight || obj.img.height)) || 0);
-                  const effScaleX = (typeof obj.scaleX === 'number' ? obj.scaleX : 1);
-                  const effScaleY = (typeof obj.scaleY === 'number' ? obj.scaleY : 1);
-                  const objW = baseW * (obj.scale || 1) * effScaleX;
-                  const objH = baseH * (obj.scale || 1) * effScaleY;
-                  const objLeft = obj.x;
-                  const objTop = obj.y;
-                  const objRight = objLeft + objW;
-                  const objBottom = objTop + objH;
-                  n.startX = Math.max(objLeft, Math.min(objRight, n.startX));
-                  n.startY = Math.max(objTop, Math.min(objBottom, n.startY));
-                  n.endX = Math.max(objLeft, Math.min(objRight, n.endX));
-                  n.endY = Math.max(objTop, Math.min(objBottom, n.endY));
-                  
-                  // Update pinned local position (bone anchor in local space)
-                  const objCenterX = objLeft + objW / 2;
-                  const objCenterY = objTop + objH / 2;
-                  const rot = obj.rotation || 0;
-                  const anchorDx = n.startX - objCenterX;
-                  const anchorDy = n.startY - objCenterY;
-                  const cos = Math.cos(rot), sin = Math.sin(rot);
-                  n.pinnedLocalX = anchorDx * cos + anchorDy * sin;
-                  n.pinnedLocalY = -anchorDx * sin + anchorDy * cos;
+                if (obj && !movedObjects.has(obj)) {
+                  movedObjects.add(obj);
+                  obj.x += dx;
+                  obj.y += dy;
+                  // Clamp object position to canvas bounds
+                  try {
+                    const cw = cutoutCanvas ? cutoutCanvas.width : 0;
+                    const ch = cutoutCanvas ? cutoutCanvas.height : 0;
+                    if (cw && ch) {
+                      const baseW = (obj.drawW != null) ? obj.drawW : ((obj.img && (obj.img.naturalWidth || obj.img.width)) || 0);
+                      const baseH = (obj.drawH != null) ? obj.drawH : ((obj.img && (obj.img.naturalHeight || obj.img.height)) || 0);
+                      const effScaleX = (typeof obj.scaleX === 'number' ? obj.scaleX : 1);
+                      const effScaleY = (typeof obj.scaleY === 'number' ? obj.scaleY : 1);
+                      const objW = baseW * (obj.scale || 1) * effScaleX;
+                      const objH = baseH * (obj.scale || 1) * effScaleY;
+                      obj.x = Math.max(0, Math.min(cw - objW, obj.x));
+                      obj.y = Math.max(0, Math.min(ch - objH, obj.y));
+                    }
+                  } catch (_clampErr) {}
+                  // pinnedLocalX/Y stays the same since relative bone-to-object position is preserved
                 }
+                
+                // Clamp bone endpoints to canvas bounds
+                try {
+                  const cw = cutoutCanvas ? cutoutCanvas.width : 0;
+                  const ch = cutoutCanvas ? cutoutCanvas.height : 0;
+                  if (cw && ch) {
+                    n.startX = Math.max(0, Math.min(cw, n.startX));
+                    n.startY = Math.max(0, Math.min(ch, n.startY));
+                    n.endX = Math.max(0, Math.min(cw, n.endX));
+                    n.endY = Math.max(0, Math.min(ch, n.endY));
+                  }
+                } catch (_clampErr) {}
                 
                 // enqueue parent and children
                 if (n.parentBoneIndex != null) queue.push(n.parentBoneIndex);
@@ -9396,6 +9677,11 @@
               bone.endY = Math.max(0, Math.min(ch, bone.endY));
             }
           } catch (_e) {}
+          // Buffer position keyframe when recorder is armed (so bone-mode drag records transforms)
+          if (cutoutRecorderArmed) {
+            if (!cutoutPendingDragKeys) cutoutPendingDragKeys = { position: null, rotation: null, zoom: null, opacity: null };
+            cutoutPendingDragKeys.position = { time: cutoutCurrentTime, x: obj.x, y: obj.y };
+          }
           scheduleDrawCutoutBonesOverlay();
           scheduleCutoutPreviewForTime();
         }
@@ -9506,6 +9792,47 @@
             cutoutBoneRotationData = null;
             cutoutIsDraggingBoneHandle = false;
             cutoutBoneDrag = null;
+            // Commit any buffered keyframe updates from bone rotation
+            if (cutoutRecorderArmed && cutoutPendingDragKeys) {
+              let committed = false;
+              if (cutoutPendingDragKeys.position) {
+                const k = cutoutPendingDragKeys.position;
+                addOrUpdatePropKeyAt('position', k.time, { x: k.x, y: k.y });
+                committed = true;
+                cutoutPendingDragKeys.position = null;
+              }
+              if (cutoutPendingDragKeys.rotation) {
+                const k = cutoutPendingDragKeys.rotation;
+                addOrUpdatePropKeyAt('rotation', k.time, { deg: k.deg });
+                committed = true;
+                cutoutPendingDragKeys.rotation = null;
+              }
+              if (committed) {
+                drawCutoutTimeline();
+                updateRowKeyActiveStates();
+              }
+            }
+            // Commit keyframes for connected parent bone objects
+            if (cutoutRecorderArmed && cutoutPendingParentKeys && cutoutPendingParentKeys.length > 0) {
+              for (const entry of cutoutPendingParentKeys) {
+                if (!entry.objectRef) continue;
+                // Ensure the parent object has a keys structure
+                if (!entry.objectRef.keys) {
+                  entry.objectRef.keys = { position: [], zoom: [], rotation: [], opacity: [] };
+                }
+                // Use addOrUpdatePropKeyAt so bone state gets stored with position keyframes
+                if (entry.position) {
+                  addOrUpdatePropKeyAt('position', entry.position.time, { x: entry.position.x, y: entry.position.y }, entry.objectRef.keys);
+                }
+                if (entry.rotation) {
+                  addOrUpdatePropKeyAt('rotation', entry.rotation.time, { deg: entry.rotation.deg }, entry.objectRef.keys);
+                }
+              }
+              // Clear the pending parent keys
+              cutoutPendingParentKeys = [];
+              drawCutoutTimeline();
+              updateRowKeyActiveStates();
+            }
             ensureCutoutBonesOverlay();
             drawCutoutBonesOverlay();
             renderCutoutPreviewForTime();
@@ -9534,6 +9861,42 @@
                   enforceCutoutBoneConnections();
                 }
               }
+              // Commit keyframes for all objects in the connected bone tree
+              if (cutoutRecorderArmed) {
+                const committedObjs = new Set();
+                // Collect all bones in connected component
+                const queue = [draggedIndex];
+                const visited = new Set();
+                while (queue.length) {
+                  const idx = queue.shift();
+                  if (visited.has(idx)) continue;
+                  visited.add(idx);
+                  const n = cutoutBones[idx];
+                  if (!n || n.clipIndex !== activeClip) continue;
+                  // Commit keyframes for this bone's object using addOrUpdatePropKeyAt to store bone state
+                  if (n.objectRef && !committedObjs.has(n.objectRef)) {
+                    committedObjs.add(n.objectRef);
+                    const obj = n.objectRef;
+                    if (!obj.keys) obj.keys = { position: [], zoom: [], rotation: [], opacity: [] };
+                    // Position keyframe (will include bone state)
+                    addOrUpdatePropKeyAt('position', cutoutCurrentTime, { x: obj.x, y: obj.y }, obj.keys);
+                    // Rotation keyframe
+                    const degVal = (obj.rotation || 0) * 180 / Math.PI;
+                    addOrUpdatePropKeyAt('rotation', cutoutCurrentTime, { deg: degVal }, obj.keys);
+                  }
+                  // Enqueue parent and children
+                  if (n.parentBoneIndex != null) queue.push(n.parentBoneIndex);
+                  for (let i = 0; i < cutoutBones.length; i++) {
+                    const c = cutoutBones[i];
+                    if (!c || c.clipIndex !== activeClip) continue;
+                    if (c.parentBoneIndex === idx) queue.push(i);
+                  }
+                }
+                if (committedObjs.size > 0) {
+                  drawCutoutTimeline();
+                  updateRowKeyActiveStates();
+                }
+              }
             }
           }
           cutoutIsDraggingBoneHandle = false;
@@ -9543,6 +9906,20 @@
           renderCutoutPreviewForTime();
         } else if (cutoutBonesModeObjDrag) {
           // End object dragging in bones mode
+          // Commit any buffered keyframe updates from bone object drag
+          if (cutoutRecorderArmed && cutoutPendingDragKeys) {
+            let committed = false;
+            if (cutoutPendingDragKeys.position) {
+              const k = cutoutPendingDragKeys.position;
+              addOrUpdatePropKeyAt('position', k.time, { x: k.x, y: k.y });
+              committed = true;
+              cutoutPendingDragKeys.position = null;
+            }
+            if (committed) {
+              drawCutoutTimeline();
+              updateRowKeyActiveStates();
+            }
+          }
           cutoutBonesModeObjDrag = null;
           ensureCutoutBonesOverlay();
           drawCutoutBonesOverlay();
@@ -9979,6 +10356,130 @@
     // Throttled compose flag
     let composeRafScheduled = false;
     
+    // Phone dimension drawing - draws ONLY to the visible checkerboard canvas
+    // NO layer canvas drawing at all - single canvas only for memory efficiency
+    let isMobileTouchDrawing = false;
+    let mobileTouchLastX = 0;
+    let mobileTouchLastY = 0;
+    
+    // Check if we're in phone dimensions mode
+    function shouldUseMobileTouchDrawing() {
+      return currentViewport === 'phone';
+    }
+    
+    // Phone dimensions: start drawing - ONLY visible canvas, no layers
+    function mobileStartDrawing(canvas, clientX, clientY) {
+      // Get frame index
+      let frameIndex = canvases.indexOf(canvas);
+      if (frameIndex === -1) frameIndex = currentFrame;
+      if (frameIndex !== currentFrame) currentFrame = frameIndex;
+      
+      // Set state
+      isMobileTouchDrawing = true;
+      isDrawing = true;
+      
+      // Get coordinates directly
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (clientX - rect.left) * scaleX;
+      const y = (clientY - rect.top) * scaleY;
+      
+      mobileTouchLastX = x;
+      mobileTouchLastY = y;
+      lastX = x;
+      lastY = y;
+      
+      // Get tool settings
+      const tool = (currentTool === 'eraser') ? 'eraser' : 'brush';
+      const size = (currentTool === 'pencil') ? Math.max(1, brushSize / 2) : brushSize;
+      
+      // Draw ONLY to visible checkerboard canvas - NO layer drawing
+      const ctx = contexts[currentFrame];
+      if (ctx) {
+        if (tool === 'eraser') {
+          ctx.globalCompositeOperation = 'destination-out';
+          ctx.beginPath();
+          ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalCompositeOperation = 'source-over';
+        } else {
+          ctx.globalAlpha = brushOpacity;
+          ctx.fillStyle = currentColor;
+          ctx.beginPath();
+          ctx.arc(x, y, size / 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalAlpha = 1;
+        }
+      }
+    }
+    
+    // Phone dimensions: draw - ONLY visible canvas, smooth strokes
+    function mobileDraw(canvas, clientX, clientY) {
+      if (!isMobileTouchDrawing) return;
+      
+      // Get coordinates directly
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (clientX - rect.left) * scaleX;
+      const y = (clientY - rect.top) * scaleY;
+      
+      // Get tool settings
+      const tool = (currentTool === 'eraser') ? 'eraser' : 'brush';
+      const size = (currentTool === 'pencil') ? Math.max(1, brushSize / 2) : brushSize;
+      
+      // Draw ONLY to visible checkerboard canvas - NO layer drawing
+      const ctx = contexts[currentFrame];
+      if (ctx) {
+        if (tool === 'eraser') {
+          ctx.globalCompositeOperation = 'destination-out';
+        } else {
+          ctx.globalAlpha = brushOpacity;
+          ctx.strokeStyle = currentColor;
+        }
+        ctx.lineWidth = size;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.beginPath();
+        ctx.moveTo(mobileTouchLastX, mobileTouchLastY);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+        
+        if (tool === 'eraser') {
+          ctx.globalCompositeOperation = 'source-over';
+        } else {
+          ctx.globalAlpha = 1;
+        }
+      }
+      
+      // Update position
+      mobileTouchLastX = x;
+      mobileTouchLastY = y;
+      lastX = x;
+      lastY = y;
+    }
+    
+    // Phone dimensions: stop drawing - copy from visible canvas to layer for persistence
+    function mobileStopDrawing() {
+      if (!isMobileTouchDrawing) return;
+      isMobileTouchDrawing = false;
+      isDrawing = false;
+      
+      // Copy visible canvas content to layer canvas for persistence (export, undo, etc)
+      const layer = frameLayers[currentFrame] && frameLayers[currentFrame][currentLayer];
+      const visibleCanvas = canvases[currentFrame];
+      if (layer && layer.ctx && visibleCanvas) {
+        // Clear layer and copy entire visible canvas to it
+        layer.ctx.clearRect(0, 0, layer.canvas.width, layer.canvas.height);
+        layer.ctx.drawImage(visibleCanvas, 0, 0);
+      }
+      
+      // Update thumbnail
+      updateThumbnail(currentFrame);
+      saveState();
+    }
+    
     function getTargetCanvasSizeForViewport(mode) {
       // High-resolution internal canvas sizes for crisp rendering
       if (mode === 'desktop') {
@@ -10054,6 +10555,167 @@
       ctx.restore();
     }
 
+    // Track and clean up brush-drawing listeners on legacy square frame canvases
+    const brushCanvasListeners = new Map();
+
+    function detachBrushCanvasListeners(canvas) {
+      if (!canvas) return;
+      const listeners = brushCanvasListeners.get(canvas);
+      if (!listeners) return;
+      listeners.forEach(([type, handler, options]) => {
+        canvas.removeEventListener(type, handler, options);
+      });
+      brushCanvasListeners.delete(canvas);
+    }
+
+    function detachAllBrushCanvasListeners() {
+      brushCanvasListeners.forEach((listeners, canvas) => {
+        listeners.forEach(([type, handler, options]) => {
+          canvas.removeEventListener(type, handler, options);
+        });
+      });
+      brushCanvasListeners.clear();
+    }
+
+    function attachBrushCanvasListeners(canvas, resolveFrameIndex) {
+      if (!canvas) return;
+      detachBrushCanvasListeners(canvas);
+      const getFrameIndex = (typeof resolveFrameIndex === 'function')
+        ? resolveFrameIndex
+        : () => {
+            const idx = canvases.indexOf(canvas);
+            return idx !== -1 ? idx : currentFrame;
+          };
+
+      const handleMouseDown = (e) => {
+        const frameIndex = getFrameIndex();
+        if (frameIndex !== currentFrame) {
+          currentFrame = frameIndex;
+          document.querySelectorAll('.canvas-container').forEach((el, i) => {
+            el.classList.toggle('active', i === frameIndex);
+          });
+          document.querySelectorAll('.timeline-frame').forEach((el, i) => {
+            el.classList.toggle('active', i === frameIndex);
+          });
+          const infoEl = document.getElementById('current-frame-info');
+          if (infoEl) infoEl.textContent = frameIndex + 1;
+
+          if (isDrawing) {
+            const coords = getCanvasCoordinates(canvases[frameIndex] || canvas, e.clientX, e.clientY);
+            lastX = coords.x;
+            lastY = coords.y;
+            const layer = frameLayers[frameIndex] && frameLayers[frameIndex][currentLayer];
+            const ctx = layer && layer.ctx;
+            if (ctx) {
+              ctx.globalAlpha = brushOpacity;
+              ctx.strokeStyle = currentColor;
+              if (currentTool === 'pencil') {
+                ctx.lineWidth = Math.max(1, brushSize / 2);
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
+                ctx.fill();
+              } else if (currentTool === 'brush') {
+                drawWithBrushType(ctx, lastX, lastY, lastX, lastY);
+              } else if (currentTool === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out';
+                ctx.lineWidth = brushSize;
+                ctx.lineCap = 'round';
+                ctx.lineJoin = 'round';
+                ctx.beginPath();
+                ctx.arc(lastX, lastY, brushSize / 2, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalCompositeOperation = 'source-over';
+              }
+              ctx.globalAlpha = 1;
+            }
+          } else {
+            startDrawing(e);
+          }
+        } else {
+          startDrawing(e);
+        }
+      };
+
+      const handleMouseUp = (e) => stopDrawing(e);
+      const handleMouseLeave = (e) => stopDrawing(e);
+      const handleWheel = (e) => {
+        e.preventDefault();
+        handleZoom(e, getFrameIndex());
+      };
+      const handleTouchStart = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const touch = e.touches[0];
+        if (!touch) return;
+        if (shouldUseMobileTouchDrawing()) {
+          mobileStartDrawing(canvas, touch.clientX, touch.clientY);
+          return;
+        }
+        const touchEvent = {
+          target: canvas,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          preventDefault: () => {},
+          type: 'touchstart'
+        };
+        startDrawing(touchEvent);
+      };
+      const handleTouchMove = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const touch = e.touches[0];
+        if (!touch) return;
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileDraw(canvas, touch.clientX, touch.clientY);
+          return;
+        }
+        if (!isDrawing) return;
+        const touchEvent = {
+          target: canvas,
+          clientX: touch.clientX,
+          clientY: touch.clientY,
+          preventDefault: () => {},
+          type: 'touchmove'
+        };
+        draw(touchEvent);
+      };
+      const handleTouchEnd = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileStopDrawing();
+          return;
+        }
+        stopDrawing();
+      };
+      const handleTouchCancel = (e) => {
+        e.preventDefault();
+        if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+          mobileStopDrawing();
+          return;
+        }
+        stopDrawing();
+      };
+
+      const listeners = [
+        ['mousedown', handleMouseDown, undefined],
+        ['mouseup', handleMouseUp, undefined],
+        ['mouseleave', handleMouseLeave, undefined],
+        ['wheel', handleWheel, undefined],
+        ['touchstart', handleTouchStart, { passive: false }],
+        ['touchmove', handleTouchMove, { passive: false }],
+        ['touchend', handleTouchEnd, { passive: false }],
+        ['touchcancel', handleTouchCancel, { passive: false }]
+      ];
+
+      listeners.forEach(([type, handler, options]) => {
+        canvas.addEventListener(type, handler, options);
+      });
+      brushCanvasListeners.set(canvas, listeners);
+    }
+
     // Initialize canvases
     for (let i = 0; i < 6; i++) {
       const canvas = document.getElementById(`canvas-${i}`);
@@ -10086,96 +10748,9 @@
       fillCheckerboard(thumbCtx, thumbCanvas.width, thumbCanvas.height);
       thumbCanvases.push(thumbCanvas);
       thumbContexts.push(thumbCtx);
-
-      canvas.addEventListener('mousedown', (e) => {
-        const frameIndex = canvases.indexOf(e.target);
-        if (frameIndex !== currentFrame) {
-          // Switch frame instantly
-          currentFrame = frameIndex;
-          document.querySelectorAll('.canvas-container').forEach((el, i) => {
-            el.classList.toggle('active', i === frameIndex);
-          });
-          document.querySelectorAll('.timeline-frame').forEach((el, i) => {
-            el.classList.toggle('active', i === frameIndex);
-          });
-          document.getElementById('current-frame-info').textContent = frameIndex + 1;
-          
-          // Continue drawing seamlessly on the new frame
-          if (isDrawing) {
-            // Update coordinates for the new frame
-            const coords = getCanvasCoordinates(canvases[frameIndex], e.clientX, e.clientY);
-            lastX = coords.x;
-            lastY = coords.y;
-            // Draw a dot at the new position to maintain continuity
-            const layer = frameLayers[frameIndex][currentLayer];
-            const ctx = layer.ctx;
-            ctx.globalAlpha = brushOpacity;
-            ctx.strokeStyle = currentColor;
-            
-            if (currentTool === 'pencil') {
-              ctx.lineWidth = Math.max(1, brushSize / 2);
-              ctx.lineCap = 'round';
-              ctx.lineJoin = 'round';
-              ctx.beginPath();
-              ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
-              ctx.fill();
-            } else if (currentTool === 'brush') {
-              drawWithBrushType(ctx, lastX, lastY, lastX, lastY);
-            } else if (currentTool === 'eraser') {
-              ctx.globalCompositeOperation = 'destination-out';
-              ctx.lineWidth = brushSize;
-              ctx.lineCap = 'round';
-              ctx.lineJoin = 'round';
-              ctx.beginPath();
-              ctx.arc(lastX, lastY, brushSize / 2, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.globalCompositeOperation = 'source-over';
-            }
-            
-            ctx.globalAlpha = 1;
-          } else {
-            startDrawing(e);
-          }
-        } else {
-          startDrawing(e);
-        }
-      });
-      // Don't add individual mousemove listeners - use global handler
-      canvas.addEventListener('mouseup', stopDrawing);
-      canvas.addEventListener('mouseleave', stopDrawing);
-      
-      canvas.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent('mousedown', {
-          clientX: touch.clientX,
-          clientY: touch.clientY
-        });
-        canvas.dispatchEvent(mouseEvent);
-      });
-      
-      canvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent('mousemove', {
-          clientX: touch.clientX,
-          clientY: touch.clientY
-        });
-        // Dispatch to global handler
-        document.dispatchEvent(mouseEvent);
-      });
-      
-      canvas.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        const mouseEvent = new MouseEvent('mouseup', {});
-        canvas.dispatchEvent(mouseEvent);
-      });
-      
-      /* Added wheel event listener for zoom functionality */
-      canvas.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const frameIndex = canvases.indexOf(e.target);
-        handleZoom(e, frameIndex);
+      attachBrushCanvasListeners(canvas, () => {
+        const idx = canvases.indexOf(canvas);
+        return idx !== -1 ? idx : i;
       });
 
       // Enable drag & drop image import on the frame container
@@ -12524,7 +13099,9 @@
         })()
       };
       history.push(state);
-      if (history.length > 50) history.shift();
+      // Use smaller history limit on mobile to save memory
+      const maxHistory = shouldUseMobileTouchDrawing() ? 10 : 50;
+      while (history.length > maxHistory) history.shift();
       redoStack.length = 0;
       updateHistoryButtons();
     }
@@ -13363,6 +13940,20 @@
       }, 10);
     }
     
+    // Global touch end handler for mobile
+    function handleGlobalTouchEnd(event) {
+      // For mobile viewport, use simplified drawing stop
+      if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+        mobileStopDrawing();
+        return;
+      }
+      
+      // Desktop/complex mode
+      if (isDrawing) {
+        stopDrawing();
+      }
+    }
+    
     // Comprehensive event handling system
     function setupTimelineFrameEvents() {
       // Remove all existing event listeners first
@@ -13370,6 +13961,8 @@
       document.removeEventListener('mousedown', handleGlobalMouseDown, true);
       document.removeEventListener('mouseup', handleGlobalMouseUp, true);
       document.removeEventListener('auxclick', handleGlobalAuxClick, true);
+      document.removeEventListener('touchend', handleGlobalTouchEnd, true);
+      document.removeEventListener('touchcancel', handleGlobalTouchEnd, true);
       
       // Add comprehensive event listeners
       document.addEventListener('contextmenu', handleGlobalContextMenu, true);
@@ -13377,6 +13970,11 @@
       document.addEventListener('mouseup', handleGlobalMouseUp, true);
       document.addEventListener('auxclick', handleGlobalAuxClick, true);
       document.addEventListener('mousemove', handleGlobalMouseMove, true);
+      
+      // Add touch event listeners for mobile drawing
+      document.addEventListener('touchmove', handleGlobalTouchMove, { passive: false });
+      document.addEventListener('touchend', handleGlobalTouchEnd, true);
+      document.addEventListener('touchcancel', handleGlobalTouchEnd, true);
     }
     
     // Global context menu handler
@@ -13527,6 +14125,61 @@
       
       // Continue drawing
       draw(event);
+    }
+    
+    // Global touch move handler for seamless touch drawing across frames
+    function handleGlobalTouchMove(event) {
+      const touch = event.touches[0];
+      if (!touch) return;
+      
+      // For mobile viewport, use simplified drawing - skip elementFromPoint for performance
+      if (shouldUseMobileTouchDrawing() && isMobileTouchDrawing) {
+        event.preventDefault();
+        event.stopPropagation();
+        // Use current frame's canvas directly - avoid expensive elementFromPoint
+        const canvas = canvases[currentFrame];
+        if (canvas) {
+          mobileDraw(canvas, touch.clientX, touch.clientY);
+        }
+        return;
+      }
+      
+      // Desktop/complex mode
+      if (!isDrawing) return;
+      
+      // Find which canvas the touch is over
+      const elementAtPoint = document.elementFromPoint(touch.clientX, touch.clientY);
+      const canvas = elementAtPoint?.closest('canvas');
+      
+      if (!canvas || !canvases.includes(canvas)) return;
+      
+      event.preventDefault();
+      event.stopPropagation();
+      
+      const frameIndex = canvases.indexOf(canvas);
+      if (frameIndex !== currentFrame) {
+        // Switch frame instantly if different
+        currentFrame = frameIndex;
+        document.querySelectorAll('.canvas-container').forEach((el, i) => {
+          el.classList.toggle('active', i === frameIndex);
+        });
+        document.querySelectorAll('.timeline-frame').forEach((el, i) => {
+          el.classList.toggle('active', i === frameIndex);
+        });
+        document.getElementById('current-frame-info').textContent = frameIndex + 1;
+      }
+      
+      // Create a touch event compatible with the draw function
+      const touchEvent = {
+        target: canvas,
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        preventDefault: () => {},
+        type: 'touchmove'
+      };
+      
+      // Continue drawing
+      draw(touchEvent);
     }
     
     // Initialize the event system
@@ -13760,7 +14413,14 @@
         } catch (_e) {}
         
         // Ensure bones overlay is visible to allow moving bones without accidental new lasso
-        try { ensureCutoutBonesOverlay(); drawCutoutBonesOverlay(); } catch (_e) {}
+        // Also update bone positions from keyframes for the current time
+        try { 
+          ensureCutoutBonesOverlay();
+          if (!cutoutIsPlaying && cutoutBones.length > 0) {
+            updateCutoutBonePositionsFromKeyframes();
+          }
+          drawCutoutBonesOverlay();
+        } catch (_e) {}
       }
       // When switching INTO magic tools (including eraser lasso), clear selection overlays
       if (tool === 'inbetween' || tool === 'detail' || tool === 'extend-lasso' || tool === 'lasso') {
@@ -17420,8 +18080,279 @@
       }
       return null;
     }
+    // Update bone positions based on object keyframes at the current time
+    // This ensures bones show their correct position when scrubbing the timeline
+    // For connected bones, we process in dependency order (children first, then parents)
+    function updateCutoutBonePositionsFromKeyframes() {
+      const t = Math.max(0, Math.min(cutoutDuration, cutoutCurrentTime || 0));
+      const activeClip = getActiveCutoutClipIndex();
+      const epsilon = 1 / 60;
+      
+      // First pass: try to restore bone positions from stored bone state in keyframes
+      const bonesWithStoredState = new Set();
+      
+      for (let bi = 0; bi < cutoutBones.length; bi++) {
+        const bone = cutoutBones[bi];
+        if (!bone || bone.clipIndex !== activeClip || !bone.objectRef) continue;
+        
+        const obj = bone.objectRef;
+        const keys = (obj.keys && typeof obj.keys === 'object') ? obj.keys : { position: [], zoom: [], rotation: [], opacity: [] };
+        const posKeys = keys.position || [];
+        
+        if (posKeys.length === 0) continue;
+        
+        // Check if we're at a keyframe with stored bone state
+        const exactKey = posKeys.find(k => Math.abs(k.time - t) <= epsilon && k.boneState && k.boneState.boneIndex === bi);
+        if (exactKey && exactKey.boneState) {
+          bone.startX = exactKey.boneState.startX;
+          bone.startY = exactKey.boneState.startY;
+          bone.endX = exactKey.boneState.endX;
+          bone.endY = exactKey.boneState.endY;
+          bonesWithStoredState.add(bi);
+          continue;
+        }
+        
+        // Check if we're between two keyframes that both have bone state
+        let prevKey = null, nextKey = null;
+        for (const k of posKeys) {
+          if (k.time <= t && k.boneState && k.boneState.boneIndex === bi) {
+            if (!prevKey || k.time > prevKey.time) prevKey = k;
+          }
+          if (k.time >= t && k.boneState && k.boneState.boneIndex === bi) {
+            if (!nextKey || k.time < nextKey.time) nextKey = k;
+          }
+        }
+        
+        if (prevKey && nextKey && prevKey !== nextKey) {
+          const alpha = (t - prevKey.time) / (nextKey.time - prevKey.time);
+          bone.startX = lerp(prevKey.boneState.startX, nextKey.boneState.startX, alpha);
+          bone.startY = lerp(prevKey.boneState.startY, nextKey.boneState.startY, alpha);
+          bone.endX = lerp(prevKey.boneState.endX, nextKey.boneState.endX, alpha);
+          bone.endY = lerp(prevKey.boneState.endY, nextKey.boneState.endY, alpha);
+          bonesWithStoredState.add(bi);
+        } else if (prevKey) {
+          bone.startX = prevKey.boneState.startX;
+          bone.startY = prevKey.boneState.startY;
+          bone.endX = prevKey.boneState.endX;
+          bone.endY = prevKey.boneState.endY;
+          bonesWithStoredState.add(bi);
+        } else if (nextKey) {
+          bone.startX = nextKey.boneState.startX;
+          bone.startY = nextKey.boneState.startY;
+          bone.endX = nextKey.boneState.endX;
+          bone.endY = nextKey.boneState.endY;
+          bonesWithStoredState.add(bi);
+        }
+      }
+      
+      // Helper to calculate bone position from its object's keyframes
+      function calcBoneFromObjectKeyframes(bone, bi) {
+        // Skip if this bone already has stored state
+        if (bonesWithStoredState.has(bi)) return;
+        if (!bone || !bone.objectRef) return;
+        
+        const obj = bone.objectRef;
+        const keys = (obj.keys && typeof obj.keys === 'object') ? obj.keys : { position: [], zoom: [], rotation: [], opacity: [] };
+        
+        // Sample position keyframes
+        let objX = obj.x, objY = obj.y;
+        const pos = sampleKeyframes(keys.position, t, (a, b, alpha) => ({
+          x: lerp(a.x, b.x, alpha),
+          y: lerp(a.y, b.y, alpha)
+        }));
+        if (pos) { objX = pos.x; objY = pos.y; }
+        
+        // Sample rotation keyframes
+        let objRotation = obj.rotation || 0;
+        const rot = sampleKeyframes(keys.rotation, t, (a, b, alpha) => {
+          const target = shortestAngleDeg(a.deg, b.deg);
+          return { deg: lerp(a.deg, target, alpha) };
+        });
+        if (rot) { objRotation = (rot.deg * Math.PI) / 180; }
+        
+        // Calculate object dimensions
+        const baseW = (obj.drawW != null) ? obj.drawW : ((obj.img && (obj.img.naturalWidth || obj.img.width)) || 0);
+        const baseH = (obj.drawH != null) ? obj.drawH : ((obj.img && (obj.img.naturalHeight || obj.img.height)) || 0);
+        const effScaleX = (typeof obj.scaleX === 'number' ? obj.scaleX : 1);
+        const effScaleY = (typeof obj.scaleY === 'number' ? obj.scaleY : 1);
+        const w = baseW * (obj.scale || 1) * effScaleX;
+        const h = baseH * (obj.scale || 1) * effScaleY;
+        
+        // Calculate object center at this keyframed position
+        const objCenterX = objX + w / 2;
+        const objCenterY = objY + h / 2;
+        
+        // Calculate bone start position from pinnedLocal
+        const px = (typeof bone.pinnedLocalX === 'number') ? bone.pinnedLocalX : 0;
+        const py = (typeof bone.pinnedLocalY === 'number') ? bone.pinnedLocalY : 0;
+        const cos = Math.cos(objRotation), sin = Math.sin(objRotation);
+        const rx = px * cos - py * sin;
+        const ry = px * sin + py * cos;
+        
+        bone.startX = objCenterX + rx;
+        bone.startY = objCenterY + ry;
+        
+        // Calculate bone end from restAngle + rotation delta
+        if (typeof bone.restAngle === 'number') {
+          const initialObjRotation = bone.imageRotationOffset != null ? (bone.restAngle - bone.imageRotationOffset) : 0;
+          const rotationDelta = objRotation - initialObjRotation;
+          const currentBoneAngle = bone.restAngle + rotationDelta;
+          const boneLength = bone.restLength || 50;
+          bone.endX = bone.startX + Math.cos(currentBoneAngle) * boneLength;
+          bone.endY = bone.startY + Math.sin(currentBoneAngle) * boneLength;
+        } else {
+          // Use endLocal if available
+          if (typeof bone.endLocalX === 'number' && typeof bone.endLocalY === 'number') {
+            const rxEnd = bone.endLocalX * cos - bone.endLocalY * sin;
+            const ryEnd = bone.endLocalX * sin + bone.endLocalY * cos;
+            bone.endX = objCenterX + rxEnd;
+            bone.endY = objCenterY + ryEnd;
+          }
+        }
+        
+        return objRotation;
+      }
+      
+      // Build dependency order: process bones that are NOT parents first (leaf bones),
+      // then bones that are parents to already-processed bones
+      // Connection model: child.END connects to parent.START
+      // So we need to process children first, then position parents based on connection
+      
+      const processed = new Set();
+      const boneRotations = {}; // Store calculated rotations for each bone
+      
+      // First pass: identify root bones (bones that have NO parentBoneIndex or whose parent is not in activeClip)
+      // These are the "child" bones in our terminology - their START is the rotation handle
+      const rootBones = [];
+      const childrenMap = {}; // parentIndex -> [childIndices]
+      
+      for (let bi = 0; bi < cutoutBones.length; bi++) {
+        const bone = cutoutBones[bi];
+        if (!bone || bone.clipIndex !== activeClip) continue;
+        
+        if (bone.parentBoneIndex == null || !cutoutBones[bone.parentBoneIndex] || cutoutBones[bone.parentBoneIndex].clipIndex !== activeClip) {
+          rootBones.push(bi);
+        } else {
+          // This bone has a parent
+          const pid = bone.parentBoneIndex;
+          if (!childrenMap[pid]) childrenMap[pid] = [];
+          childrenMap[pid].push(bi);
+        }
+      }
+      
+      // Process root bones first (calculate from their object keyframes if not already restored)
+      for (const bi of rootBones) {
+        const bone = cutoutBones[bi];
+        if (!bone) continue;
+        const objRot = calcBoneFromObjectKeyframes(bone, bi);
+        boneRotations[bi] = objRot;
+        processed.add(bi);
+      }
+      
+      // Now process connected bones in order
+      // For each bone with children, after processing the children, position the parent based on connection
+      // Connection: child.attachedAt (usually 'end') connects to parent.parentAttach (usually 'start')
+      
+      // We need to propagate from children to parents:
+      // child.END -> parent.START, then parent.END is calculated from parent's object rotation
+      
+      function processConnectedParent(childIndex) {
+        const child = cutoutBones[childIndex];
+        if (!child || child.parentBoneIndex == null) return;
+        
+        const parentIndex = child.parentBoneIndex;
+        if (processed.has(parentIndex)) return;
+        
+        const parent = cutoutBones[parentIndex];
+        if (!parent || parent.clipIndex !== activeClip) return;
+        
+        // First, calculate parent's position from its object keyframes (if not already restored)
+        const parentObjRot = calcBoneFromObjectKeyframes(parent, parentIndex);
+        boneRotations[parentIndex] = parentObjRot;
+        
+        // Now adjust: the connection point should match
+        // child.attachedAt tells us which end of child is connected
+        // child.parentAttach tells us which end of parent it connects to
+        const childAttachX = child.attachedAt === 'start' ? child.startX : child.endX;
+        const childAttachY = child.attachedAt === 'start' ? child.startY : child.endY;
+        
+        // Move parent so its attachment point matches child's attachment point
+        if (child.parentAttach === 'start') {
+          const dx = childAttachX - parent.startX;
+          const dy = childAttachY - parent.startY;
+          parent.startX = childAttachX;
+          parent.startY = childAttachY;
+          parent.endX += dx;
+          parent.endY += dy;
+        } else {
+          const dx = childAttachX - parent.endX;
+          const dy = childAttachY - parent.endY;
+          parent.endX = childAttachX;
+          parent.endY = childAttachY;
+          parent.startX += dx;
+          parent.startY += dy;
+        }
+        
+        processed.add(parentIndex);
+        
+        // If this parent also has a parent, process it
+        if (parent.parentBoneIndex != null) {
+          processConnectedParent(parentIndex);
+        }
+      }
+      
+      // Process all children and propagate to parents
+      for (const bi of rootBones) {
+        // Check if this root bone has children that connect to it
+        if (childrenMap[bi]) {
+          for (const childIdx of childrenMap[bi]) {
+            // The "child" in childrenMap connects TO bone bi
+            // So bi is the parent, and we need to position bi based on childIdx
+            // But wait, this is backwards - let me re-think...
+          }
+        }
+      }
+      
+      // After calculating bone positions, enforce connections for bones without stored state
+      // The child bone's position is authoritative, parent adjusts to match
+      for (let bi = 0; bi < cutoutBones.length; bi++) {
+        const child = cutoutBones[bi];
+        if (!child || child.clipIndex !== activeClip) continue;
+        if (child.parentBoneIndex == null) continue;
+        
+        const parent = cutoutBones[child.parentBoneIndex];
+        if (!parent || parent.clipIndex !== activeClip) continue;
+        
+        // Skip if parent has stored state (its position is already correct from keyframe)
+        if (bonesWithStoredState.has(child.parentBoneIndex)) continue;
+        
+        // Get child's attachment point
+        const childAttachX = child.attachedAt === 'start' ? child.startX : child.endX;
+        const childAttachY = child.attachedAt === 'start' ? child.startY : child.endY;
+        
+        // Get parent's current attachment point
+        const parentAttachX = child.parentAttach === 'start' ? parent.startX : parent.endX;
+        const parentAttachY = child.parentAttach === 'start' ? parent.startY : parent.endY;
+        
+        // Move parent to match
+        const dx = childAttachX - parentAttachX;
+        const dy = childAttachY - parentAttachY;
+        
+        if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+          parent.startX += dx;
+          parent.startY += dy;
+          parent.endX += dx;
+          parent.endY += dy;
+        }
+      }
+    }
     function enforceCutoutBoneConnections() {
       const activeClip = getActiveCutoutClipIndex();
+      // For connected bones, ensure the connection points match
+      // The child bone's attachment point should stay where it is (it's authoritative)
+      // The parent bone's attachment point should be moved to match
+      // This is the opposite of the old behavior which moved the child
+      
       for (let pass = 0; pass < cutoutBones.length; pass++) {
         let any = false;
         for (let i = 0; i < cutoutBones.length; i++) {
@@ -17430,46 +18361,37 @@
           if (c.parentBoneIndex == null) continue;
           const p = cutoutBones[c.parentBoneIndex];
           if (!p || p.clipIndex !== activeClip) continue;
-          const px = c.parentAttach === 'start' ? p.startX : p.endX;
-          const py = c.parentAttach === 'start' ? p.startY : p.endY;
-          if (c.attachedAt === 'start') {
-            const dx = px - c.startX;
-            const dy = py - c.startY;
-            if (dx !== 0 || dy !== 0) {
-              c.startX = px; c.startY = py;
-              c.endX += dx; c.endY += dy;
-              any = true;
-              // Clamp to canvas
-              try {
-                const cw = cutoutCanvas ? cutoutCanvas.width : 0;
-                const ch = cutoutCanvas ? cutoutCanvas.height : 0;
-                if (cw && ch) {
-                  c.startX = Math.max(0, Math.min(cw, c.startX));
-                  c.startY = Math.max(0, Math.min(ch, c.startY));
-                  c.endX = Math.max(0, Math.min(cw, c.endX));
-                  c.endY = Math.max(0, Math.min(ch, c.endY));
-                }
-              } catch (_e) {}
-            }
-          } else if (c.attachedAt === 'end') {
-            const dx = px - c.endX;
-            const dy = py - c.endY;
-            if (dx !== 0 || dy !== 0) {
-              c.endX = px; c.endY = py;
-              c.startX += dx; c.startY += dy;
-              any = true;
-              // Clamp to canvas
-              try {
-                const cw = cutoutCanvas ? cutoutCanvas.width : 0;
-                const ch = cutoutCanvas ? cutoutCanvas.height : 0;
-                if (cw && ch) {
-                  c.startX = Math.max(0, Math.min(cw, c.startX));
-                  c.startY = Math.max(0, Math.min(ch, c.startY));
-                  c.endX = Math.max(0, Math.min(cw, c.endX));
-                  c.endY = Math.max(0, Math.min(ch, c.endY));
-                }
-              } catch (_e) {}
-            }
+          
+          // Get child's attachment point (this is authoritative)
+          const childAttachX = c.attachedAt === 'start' ? c.startX : c.endX;
+          const childAttachY = c.attachedAt === 'start' ? c.startY : c.endY;
+          
+          // Get parent's attachment point
+          const parentAttachX = c.parentAttach === 'start' ? p.startX : p.endX;
+          const parentAttachY = c.parentAttach === 'start' ? p.startY : p.endY;
+          
+          // Move parent to match child (child is authoritative)
+          const dx = childAttachX - parentAttachX;
+          const dy = childAttachY - parentAttachY;
+          
+          if (Math.abs(dx) > 0.001 || Math.abs(dy) > 0.001) {
+            p.startX += dx;
+            p.startY += dy;
+            p.endX += dx;
+            p.endY += dy;
+            any = true;
+            
+            // Clamp to canvas
+            try {
+              const cw = cutoutCanvas ? cutoutCanvas.width : 0;
+              const ch = cutoutCanvas ? cutoutCanvas.height : 0;
+              if (cw && ch) {
+                p.startX = Math.max(0, Math.min(cw, p.startX));
+                p.startY = Math.max(0, Math.min(ch, p.startY));
+                p.endX = Math.max(0, Math.min(cw, p.endX));
+                p.endY = Math.max(0, Math.min(ch, p.endY));
+              }
+            } catch (_e) {}
           }
         }
         if (!any) break;
@@ -17488,10 +18410,15 @@
         if (!parent || parent.clipIndex !== activeClip) return;
         parentJointSide = b.parentAttach;
       }
+      // Pivot is the fixed end of the parent bone (opposite of the joint being dragged)
       const pivotX = parentJointSide === 'start' ? parent.endX : parent.startX;
       const pivotY = parentJointSide === 'start' ? parent.endY : parent.startY;
       const oldJointX = parentJointSide === 'start' ? parent.startX : parent.endX;
       const oldJointY = parentJointSide === 'start' ? parent.startY : parent.endY;
+      
+      // Calculate old and new bone angles for rotation delta
+      const oldAngle = Math.atan2(oldJointY - pivotY, oldJointX - pivotX);
+      
       const L = Math.max(0.0001, parent.restLength || Math.hypot(parent.endX - parent.startX, parent.endY - parent.startY));
       let vx = targetX - pivotX;
       let vy = targetY - pivotY;
@@ -17499,6 +18426,11 @@
       vx /= len; vy /= len;
       const newJointX = pivotX + vx * L;
       const newJointY = pivotY + vy * L;
+      
+      const newAngle = Math.atan2(newJointY - pivotY, newJointX - pivotX);
+      const angleDelta = newAngle - oldAngle;
+      
+      // Update bone endpoints
       if (parentJointSide === 'start') { parent.startX = newJointX; parent.startY = newJointY; }
       else { parent.endX = newJointX; parent.endY = newJointY; }
       // Clamp parent endpoints
@@ -17512,15 +18444,44 @@
           parent.endY = Math.max(0, Math.min(ch, parent.endY));
         }
       } catch (_e) {}
+      
+      // Update parent object using consistent pinnedLocal formula
       if (parent.objectRef) {
-        // No longer apply rotation or position changes directly to the attached object
+        const parentObj = parent.objectRef;
+        // Update object rotation
+        parentObj.rotation = (parentObj.rotation || 0) + angleDelta;
+        // Calculate object dimensions
+        const baseW = (parentObj.drawW != null) ? parentObj.drawW : ((parentObj.img && (parentObj.img.naturalWidth || parentObj.img.width)) || 0);
+        const baseH = (parentObj.drawH != null) ? parentObj.drawH : ((parentObj.img && (parentObj.img.naturalHeight || parentObj.img.height)) || 0);
+        const effScaleX = (typeof parentObj.scaleX === 'number' ? parentObj.scaleX : 1);
+        const effScaleY = (typeof parentObj.scaleY === 'number' ? parentObj.scaleY : 1);
+        const w = baseW * (parentObj.scale || 1) * effScaleX;
+        const h = baseH * (parentObj.scale || 1) * effScaleY;
+        
+        // Use the consistent pinnedLocal formula: objectCenter = boneStart - rotatedPinnedLocal
+        // pinnedLocalX/Y should already be set when bone was created
+        let px = (typeof parent.pinnedLocalX === 'number') ? parent.pinnedLocalX : 0;
+        let py = (typeof parent.pinnedLocalY === 'number') ? parent.pinnedLocalY : 0;
+        
+        const rot = parentObj.rotation || 0;
+        const cos = Math.cos(rot), sin = Math.sin(rot);
+        const rx = px * cos - py * sin;
+        const ry = px * sin + py * cos;
+        const centerX = parent.startX - rx;
+        const centerY = parent.startY - ry;
+        parentObj.x = centerX - w / 2;
+        parentObj.y = centerY - h / 2;
       }
+      
       const djx = newJointX - oldJointX;
       const djy = newJointY - oldJointY;
+      
+      // Update child bones connected to the joint that moved
       for (let i = 0; i < cutoutBones.length; i++) {
         const c = cutoutBones[i];
         if (!c || c.clipIndex !== activeClip) continue;
         if (c.parentBoneIndex === parentIndex && c.parentAttach === parentJointSide) {
+          // Translate child bone endpoints (they follow the connection point)
           c.startX += djx; c.startY += djy;
           c.endX += djx; c.endY += djy;
           // Clamp child endpoints
@@ -17534,7 +18495,33 @@
               c.endY = Math.max(0, Math.min(ch, c.endY));
             }
           } catch (_e) {}
-          // Do not move any attached objects when bones move
+          
+          // Update child object using consistent pinnedLocal formula
+          if (c.objectRef) {
+            const childObj = c.objectRef;
+            // Update object rotation by the same angle delta
+            childObj.rotation = (childObj.rotation || 0) + angleDelta;
+            // Calculate object dimensions
+            const baseWC = (childObj.drawW != null) ? childObj.drawW : ((childObj.img && (childObj.img.naturalWidth || childObj.img.width)) || 0);
+            const baseHC = (childObj.drawH != null) ? childObj.drawH : ((childObj.img && (childObj.img.naturalHeight || childObj.img.height)) || 0);
+            const effScaleXC = (typeof childObj.scaleX === 'number' ? childObj.scaleX : 1);
+            const effScaleYC = (typeof childObj.scaleY === 'number' ? childObj.scaleY : 1);
+            const wC = baseWC * (childObj.scale || 1) * effScaleXC;
+            const hC = baseHC * (childObj.scale || 1) * effScaleYC;
+            
+            // Use the consistent pinnedLocal formula
+            let cpx = (typeof c.pinnedLocalX === 'number') ? c.pinnedLocalX : 0;
+            let cpy = (typeof c.pinnedLocalY === 'number') ? c.pinnedLocalY : 0;
+            
+            const rotC = childObj.rotation || 0;
+            const cosC = Math.cos(rotC), sinC = Math.sin(rotC);
+            const rxC = cpx * cosC - cpy * sinC;
+            const ryC = cpx * sinC + cpy * cosC;
+            const centerXC = c.startX - rxC;
+            const centerYC = c.startY - ryC;
+            childObj.x = centerXC - wC / 2;
+            childObj.y = centerYC - hC / 2;
+          }
         }
       }
       enforceCutoutBoneConnections();
@@ -19818,81 +20805,9 @@
       newCtx.fillRect(0, 0, newCanvas.width, newCanvas.height);
       canvases.push(newCanvas);
       contexts.push(newCtx);
-      newCanvas.addEventListener('mousedown', (e) => {
-        const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : newFrameIndex;
-        if (frameIndex !== currentFrame) {
-          currentFrame = frameIndex;
-          document.querySelectorAll('.canvas-container').forEach((el, i) => {
-            el.classList.toggle('active', i === frameIndex);
-          });
-          document.querySelectorAll('.timeline-frame').forEach((el, i) => {
-            el.classList.toggle('active', i === frameIndex);
-          });
-          document.getElementById('current-frame-info').textContent = frameIndex + 1;
-          if (isDrawing) {
-            const coords = getCanvasCoordinates(canvases[frameIndex], e.clientX, e.clientY);
-            lastX = coords.x;
-            lastY = coords.y;
-            const layer = frameLayers[frameIndex][currentLayer];
-            const ctx = layer.ctx;
-            ctx.globalAlpha = brushOpacity;
-            ctx.strokeStyle = currentColor;
-            if (currentTool === 'pencil') {
-              ctx.lineWidth = Math.max(1, brushSize / 2);
-              ctx.lineCap = 'round';
-              ctx.lineJoin = 'round';
-              ctx.beginPath();
-              ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
-              ctx.fill();
-            } else if (currentTool === 'brush') {
-              drawWithBrushType(ctx, lastX, lastY, lastX, lastY);
-            } else if (currentTool === 'eraser') {
-              ctx.globalCompositeOperation = 'destination-out';
-              ctx.lineWidth = brushSize;
-              ctx.lineCap = 'round';
-              ctx.lineJoin = 'round';
-              ctx.beginPath();
-              ctx.arc(lastX, lastY, brushSize / 2, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.globalCompositeOperation = 'source-over';
-            }
-            ctx.globalAlpha = 1;
-          } else {
-            startDrawing(e);
-          }
-        } else {
-          startDrawing(e);
-        }
-      });
-      newCanvas.addEventListener('mouseup', stopDrawing);
-      newCanvas.addEventListener('mouseleave', stopDrawing);
-      newCanvas.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : newFrameIndex;
-        handleZoom(e, frameIndex);
-      });
-      newCanvas.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent('mousedown', {
-          clientX: touch.clientX,
-          clientY: touch.clientY
-        });
-        newCanvas.dispatchEvent(mouseEvent);
-      });
-      newCanvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent('mousemove', {
-          clientX: touch.clientX,
-          clientY: touch.clientY
-        });
-        document.dispatchEvent(mouseEvent);
-      });
-      newCanvas.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        const mouseEvent = new MouseEvent('mouseup', {});
-        newCanvas.dispatchEvent(mouseEvent);
+      attachBrushCanvasListeners(newCanvas, () => {
+        const idx = canvases.indexOf(newCanvas);
+        return idx !== -1 ? idx : newFrameIndex;
       });
       newFrameContainer.addEventListener('dragover', (e) => { e.preventDefault(); });
       newFrameContainer.addEventListener('dragenter', (e) => { e.preventDefault(); });
@@ -20324,85 +21239,9 @@
       const newCtx = newCanvas.getContext('2d', { willReadFrequently: true });
       newCtx.fillStyle = '#1a1a1a';
       newCtx.fillRect(0, 0, newCanvas.width, newCanvas.height);
-      // Attach interaction handlers so the new frame is drawable/selectable like existing ones
-      newCanvas.addEventListener('mousedown', (e) => {
-        const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : newFrameIndex;
-        if (frameIndex !== currentFrame) {
-          // Switch frame instantly
-          currentFrame = frameIndex;
-          document.querySelectorAll('.canvas-container').forEach((el, i) => {
-            el.classList.toggle('active', i === frameIndex);
-          });
-          document.querySelectorAll('.timeline-frame').forEach((el, i) => {
-            el.classList.toggle('active', i === frameIndex);
-          });
-          document.getElementById('current-frame-info').textContent = frameIndex + 1;
-          
-          // Continue drawing seamlessly on the new frame
-          if (isDrawing) {
-            const coords = getCanvasCoordinates(canvases[frameIndex], e.clientX, e.clientY);
-            lastX = coords.x;
-            lastY = coords.y;
-            const layer = frameLayers[frameIndex][currentLayer];
-            const ctx = layer.ctx;
-            ctx.globalAlpha = brushOpacity;
-            ctx.strokeStyle = currentColor;
-            if (currentTool === 'pencil') {
-              ctx.lineWidth = Math.max(1, brushSize / 2);
-              ctx.lineCap = 'round';
-              ctx.lineJoin = 'round';
-              ctx.beginPath();
-              ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
-              ctx.fill();
-            } else if (currentTool === 'brush') {
-              drawWithBrushType(ctx, lastX, lastY, lastX, lastY);
-            } else if (currentTool === 'eraser') {
-              ctx.globalCompositeOperation = 'destination-out';
-              ctx.lineWidth = brushSize;
-              ctx.lineCap = 'round';
-              ctx.lineJoin = 'round';
-              ctx.beginPath();
-              ctx.arc(lastX, lastY, brushSize / 2, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.globalCompositeOperation = 'source-over';
-            }
-            ctx.globalAlpha = 1;
-          } else {
-            startDrawing(e);
-          }
-        } else {
-          startDrawing(e);
-        }
-      });
-      newCanvas.addEventListener('mouseup', stopDrawing);
-      newCanvas.addEventListener('mouseleave', stopDrawing);
-      newCanvas.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : newFrameIndex;
-        handleZoom(e, frameIndex);
-      });
-      newCanvas.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent('mousedown', {
-          clientX: touch.clientX,
-          clientY: touch.clientY
-        });
-        newCanvas.dispatchEvent(mouseEvent);
-      });
-      newCanvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent('mousemove', {
-          clientX: touch.clientX,
-          clientY: touch.clientY
-        });
-        document.dispatchEvent(mouseEvent);
-      });
-      newCanvas.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        const mouseEvent = new MouseEvent('mouseup', {});
-        newCanvas.dispatchEvent(mouseEvent);
+      attachBrushCanvasListeners(newCanvas, () => {
+        const idx = canvases.indexOf(newCanvas);
+        return idx !== -1 ? idx : newFrameIndex;
       });
       
       // Add to canvas arrays
@@ -20465,9 +21304,15 @@
         const canvasGrid = document.querySelector('.canvas-grid');
         if (!canvasGrid) return;
         const addFrameContainer = canvasGrid.querySelector('.add-frame-container');
+        // Remove legacy brush listeners from old square frame canvases before rebuilding
+        detachAllBrushCanvasListeners();
         // Remove all existing frame containers (keep add-frame)
         canvasGrid.querySelectorAll('.canvas-container').forEach(el => {
-          if (!el.classList.contains('add-frame-container')) el.remove();
+          if (!el.classList.contains('add-frame-container')) {
+            const legacyCanvas = el.querySelector('canvas[id^="canvas-"]');
+            if (legacyCanvas) detachBrushCanvasListeners(legacyCanvas);
+            el.remove();
+          }
         });
         // Create containers for each frame
         const target = getTargetCanvasSizeForViewport(currentViewport);
@@ -20508,82 +21353,9 @@
           container.appendChild(onion);
           canvasGrid.insertBefore(container, addFrameContainer);
           // Attach canvas interaction listeners (match addNewFrame/appendFrameFromSourceFrame behavior)
-          canvas.addEventListener('mousedown', (e) => {
-            const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : i;
-            if (frameIndex !== currentFrame) {
-              currentFrame = frameIndex;
-              document.querySelectorAll('.canvas-container').forEach((el, idx) => {
-                el.classList.toggle('active', idx === frameIndex);
-              });
-              document.querySelectorAll('.timeline-frame').forEach((el, idx) => {
-                el.classList.toggle('active', idx === frameIndex);
-              });
-              const infoEl = document.getElementById('current-frame-info');
-              if (infoEl) infoEl.textContent = frameIndex + 1;
-              if (isDrawing) {
-                const coords = getCanvasCoordinates(canvases[frameIndex] || canvas, e.clientX, e.clientY);
-                lastX = coords.x;
-                lastY = coords.y;
-                const layer = frameLayers[frameIndex][currentLayer];
-                const ctx = layer.ctx;
-                ctx.globalAlpha = brushOpacity;
-                ctx.strokeStyle = currentColor;
-                if (currentTool === 'pencil') {
-                  ctx.lineWidth = Math.max(1, brushSize / 2);
-                  ctx.lineCap = 'round';
-                  ctx.lineJoin = 'round';
-                  ctx.beginPath();
-                  ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
-                  ctx.fill();
-                } else if (currentTool === 'brush') {
-                  drawWithBrushType(ctx, lastX, lastY, lastX, lastY);
-                } else if (currentTool === 'eraser') {
-                  ctx.globalCompositeOperation = 'destination-out';
-                  ctx.lineWidth = brushSize;
-                  ctx.lineCap = 'round';
-                  ctx.lineJoin = 'round';
-                  ctx.beginPath();
-                  ctx.arc(lastX, lastY, brushSize / 2, 0, Math.PI * 2);
-                  ctx.fill();
-                  ctx.globalCompositeOperation = 'source-over';
-                }
-                ctx.globalAlpha = 1;
-              } else {
-                startDrawing(e);
-              }
-            } else {
-              startDrawing(e);
-            }
-          });
-          canvas.addEventListener('mouseup', stopDrawing);
-          canvas.addEventListener('mouseleave', stopDrawing);
-          canvas.addEventListener('wheel', (e) => {
-            e.preventDefault();
-            const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : i;
-            handleZoom(e, frameIndex);
-          });
-          canvas.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const mouseEvent = new MouseEvent('mousedown', {
-              clientX: touch.clientX,
-              clientY: touch.clientY
-            });
-            canvas.dispatchEvent(mouseEvent);
-          });
-          canvas.addEventListener('touchmove', (e) => {
-            e.preventDefault();
-            const touch = e.touches[0];
-            const mouseEvent = new MouseEvent('mousemove', {
-              clientX: touch.clientX,
-              clientY: touch.clientY
-            });
-            document.dispatchEvent(mouseEvent);
-          });
-          canvas.addEventListener('touchend', (e) => {
-            e.preventDefault();
-            const mouseEvent = new MouseEvent('mouseup', {});
-            canvas.dispatchEvent(mouseEvent);
+          attachBrushCanvasListeners(canvas, () => {
+            const idx = canvases.indexOf(canvas);
+            return idx !== -1 ? idx : i;
           });
           // DnD handlers
           container.addEventListener('dragover', (e) => { e.preventDefault(); });
@@ -20684,81 +21456,9 @@
       canvases.push(newCanvas);
       contexts.push(newCtx);
       // Interaction parity with existing frames
-      newCanvas.addEventListener('mousedown', (e) => {
-        const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : newFrameIndex;
-        if (frameIndex !== currentFrame) {
-          currentFrame = frameIndex;
-          document.querySelectorAll('.canvas-container').forEach((el, i) => {
-            el.classList.toggle('active', i === frameIndex);
-          });
-          document.querySelectorAll('.timeline-frame').forEach((el, i) => {
-            el.classList.toggle('active', i === frameIndex);
-          });
-          document.getElementById('current-frame-info').textContent = frameIndex + 1;
-          if (isDrawing) {
-            const coords = getCanvasCoordinates(canvases[frameIndex], e.clientX, e.clientY);
-            lastX = coords.x;
-            lastY = coords.y;
-            const layer = frameLayers[frameIndex][currentLayer];
-            const ctx = layer.ctx;
-            ctx.globalAlpha = brushOpacity;
-            ctx.strokeStyle = currentColor;
-            if (currentTool === 'pencil') {
-              ctx.lineWidth = Math.max(1, brushSize / 2);
-              ctx.lineCap = 'round';
-              ctx.lineJoin = 'round';
-              ctx.beginPath();
-              ctx.arc(lastX, lastY, ctx.lineWidth / 2, 0, Math.PI * 2);
-              ctx.fill();
-            } else if (currentTool === 'brush') {
-              drawWithBrushType(ctx, lastX, lastY, lastX, lastY);
-            } else if (currentTool === 'eraser') {
-              ctx.globalCompositeOperation = 'destination-out';
-              ctx.lineWidth = brushSize;
-              ctx.lineCap = 'round';
-              ctx.lineJoin = 'round';
-              ctx.beginPath();
-              ctx.arc(lastX, lastY, brushSize / 2, 0, Math.PI * 2);
-              ctx.fill();
-              ctx.globalCompositeOperation = 'source-over';
-            }
-            ctx.globalAlpha = 1;
-          } else {
-            startDrawing(e);
-          }
-        } else {
-          startDrawing(e);
-        }
-      });
-      newCanvas.addEventListener('mouseup', stopDrawing);
-      newCanvas.addEventListener('mouseleave', stopDrawing);
-      newCanvas.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        const frameIndex = canvases.indexOf(e.target) !== -1 ? canvases.indexOf(e.target) : newFrameIndex;
-        handleZoom(e, frameIndex);
-      });
-      newCanvas.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent('mousedown', {
-          clientX: touch.clientX,
-          clientY: touch.clientY
-        });
-        newCanvas.dispatchEvent(mouseEvent);
-      });
-      newCanvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        const touch = e.touches[0];
-        const mouseEvent = new MouseEvent('mousemove', {
-          clientX: touch.clientX,
-          clientY: touch.clientY
-        });
-        document.dispatchEvent(mouseEvent);
-      });
-      newCanvas.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        const mouseEvent = new MouseEvent('mouseup', {});
-        newCanvas.dispatchEvent(mouseEvent);
+      attachBrushCanvasListeners(newCanvas, () => {
+        const idx = canvases.indexOf(newCanvas);
+        return idx !== -1 ? idx : newFrameIndex;
       });
       // DnD on container
       newFrameContainer.addEventListener('dragover', (e) => { e.preventDefault(); });
