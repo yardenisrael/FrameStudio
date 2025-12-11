@@ -16,7 +16,7 @@
   <!-- Enhanced SEO meta tags -->
   <title>Frame Studio - Animate Images Online | Lightweight 2D Animation Tool</title>
   <meta name="description" content="Animate your images online with Frame Studio. Draw on a simple canvas, move layers, and build quick frame-by-frame motion without heavy software. A lightweight way to animate online when you just want pictures to come to life.">
-  <meta name="keywords" content="animate images online, animate online, online image animation tool, simple animation editor, lightweight animation software, frame by frame animation, canvas animation, pixel art animation, sprite animation, animation layers, timeline editor, online image animation maker, online animation free, online animation maker free, online animation free no download, 2d animation online, animation drawing online">
+  <meta name="keywords" content="animate images online, animate online, online image animation tool, simple animation editor, lightweight animation software, frame by frame animation, canvas animation, pixel art animation, sprite animation, mp4 export, onion skinning, animation layers, timeline editor">
   <meta name="author" content="Frame Studio">
   <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
   <meta name="theme-color" content="#6366f1">
@@ -126,7 +126,7 @@
       "name": "Frame Studio",
       "url": "https://framestudio.live/"
     },
-    "keywords": "animate images online, animate online, online image animation tool, simple animation editor, lightweight animation software, frame by frame animation, canvas animation, pixel art animation, sprite animation, mp4 export, onion skinning, animation layers, timeline editor, online image animation maker, online animation free, online animation maker free, online animation free no download, 2d animation online, animation drawing online",
+    "keywords": "animate images online, animate online, online image animation tool, simple animation editor, lightweight animation software, frame by frame animation, canvas animation, pixel art animation, sprite animation, mp4 export, onion skinning, animation layers, timeline editor",
     "inLanguage": "en-US",
     "isAccessibleForFree": true,
     "screenshot": "https://framestudio.live/favicon.png"
@@ -291,6 +291,16 @@
       background: rgba(0, 0, 0, 0.7);
       z-index: 998;
     }
+    
+    /* Ensure overlay never shows on desktop */
+    @media (min-width: 769px) {
+      .overlay {
+        display: none !important;
+      }
+      .overlay.active {
+        display: none !important;
+      }
+    }
 
     /* Cut Out mobile drawers & toggles (hidden by default) */
     .cutout-mobile-toggle,
@@ -298,8 +308,11 @@
       display: none;
     }
 
-    .overlay.active {
-      display: block;
+    /* Only show overlay on mobile when active */
+    @media (max-width: 768px) {
+      .overlay.active {
+        display: block;
+      }
     }
 
     .contact-popup {
@@ -486,6 +499,14 @@
       
       .cutout-mobile-right-toggle {
         top: 148px !important;
+      }
+      
+      /* Reposition Cut Out Mode title on mobile - centered, between record clock and top bar */
+      #cutout-mode-title {
+        left: 50% !important;
+        transform: translateX(-50%);
+        top: -45px !important;
+        text-align: center;
       }
       
       /* Adjust regular menu toggle positions */
@@ -2761,7 +2782,7 @@
           <div id="cutout-mode-container" style="display: none;">
             <div class="mt-8 mx-auto" style="max-width: none; width: 100%;">
               <div class="panel" style="position: relative;">
-                <div style="position:absolute; left:16px; top:12px;">
+                <div id="cutout-mode-title" style="position:absolute; left:16px; top:12px;">
                   <h3 class="text-sm font-semibold text-white">Cut Out Mode</h3>
                 </div>
                 <div class="flex justify-center">
@@ -3350,9 +3371,6 @@
     let cutoutSelectedBoneIndex = -1;
     let cutoutStartTimeAtPlay = 0;
     let isCutoutDragging = false;
-    let cutoutDragMoveHandler = null;
-    let cutoutDragMoveEvent = '';
-    let cutoutDragEndEvents = [];
     let cutoutPlayStartTs = 0;
     // Cutout drawing state and timeline clips
     let isCutoutDrawing = false;
@@ -3736,12 +3754,7 @@
       cutoutTimelineEl = document.getElementById('cutout-ruler-area');
       cutoutScrubberEl = document.getElementById('cutout-timeline-scrubber');
       if (cutoutTimelineEl && !cutoutTimelineEl.dataset.cutoutRulerBound) {
-        // Enable pointer/touch scrubbing, especially on phones
-        cutoutTimelineEl.style.touchAction = 'none';
-        cutoutTimelineEl.addEventListener('pointerdown', cutoutBeginDrag);
-        // Fallback for browsers without PointerEvents
         cutoutTimelineEl.addEventListener('mousedown', cutoutBeginDrag);
-        cutoutTimelineEl.addEventListener('touchstart', cutoutBeginDrag, { passive: false });
         // Accept Magic Effects drops onto ruler area to assign to clips
         cutoutTimelineEl.addEventListener('dragover', (e) => { e.preventDefault(); });
         cutoutTimelineEl.addEventListener('drop', handleCutoutEffectDrop);
@@ -3749,8 +3762,6 @@
         cutoutTimelineEl.addEventListener('drop', handleCutoutTransitionDrop);
         cutoutTimelineEl.dataset.cutoutRulerBound = '1';
       }
-      // Make transport controls respond instantly to taps on phones
-      bindCutoutTransportTaps();
       // Also accept drops on the clips lane
       const cutoutClipsLane = document.getElementById('cutout-timeline-clips');
       if (cutoutClipsLane && !cutoutClipsLane.dataset.cutoutClipsBound) {
@@ -4345,27 +4356,6 @@
       if (btnRev) btnRev.classList.toggle('active', mode === 'reverse');
     }
 
-    // Ensure transport buttons react to taps in phone layout
-    function bindCutoutTransportTaps() {
-      const attach = (id, handler) => {
-        const el = document.getElementById(id);
-        if (!el || el.dataset.cutoutTapBound) return;
-        const onTouch = (evt) => {
-          if (!isPhoneViewport()) return;
-          if (evt && evt.cancelable) evt.preventDefault();
-          handler();
-        };
-        el.addEventListener('touchstart', onTouch, { passive: false });
-        el.addEventListener('pointerdown', (evt) => {
-          if (evt.pointerType === 'touch') onTouch(evt);
-        });
-        el.dataset.cutoutTapBound = '1';
-      };
-      attach('cutout-btn-play', cutoutPlayForward);
-      attach('cutout-btn-pause', cutoutPause);
-      attach('cutout-btn-reverse', cutoutPlayReverse);
-    }
-
     // Keep cutout sizing in sync on window resize
     window.addEventListener('resize', () => {
       if (isCutOutMode) {
@@ -4381,13 +4371,10 @@
 
     function cutoutSetTimeFromEvent(e) {
       const track = document.getElementById('cutout-ruler-area');
-      const clientX = getPointerClientX(e);
-      if (!track || clientX === null) return;
+      if (!track) return;
       const rect = track.getBoundingClientRect();
-      const width = rect.width || track.offsetWidth || 0;
-      if (width <= 0) return;
-      const x = clientX - rect.left;
-      const pct = Math.max(0, Math.min(1, x / width));
+      const x = e.clientX - rect.left;
+      const pct = Math.max(0, Math.min(1, x / rect.width));
       cutoutCurrentTime = pct * cutoutDuration;
       updateCutoutScrubber();
       // Update bone positions from keyframes when scrubbing timeline
@@ -4398,45 +4385,22 @@
     }
 
     function cutoutBeginDrag(e) {
-      if (isCutoutDragging) return;
       isCutoutDragging = true;
       document.body.style.userSelect = 'none';
-      cutoutSetTimeFromEvent(e);
-      const usingPointerEvents = typeof PointerEvent !== 'undefined';
-      const isTouch = !!(e && (e.pointerType === 'touch' || e.type === 'touchstart'));
-      const moveEvent = usingPointerEvents
-        ? 'pointermove'
-        : ('ontouchmove' in window ? 'touchmove' : 'mousemove');
-      const endEvents = usingPointerEvents
-        ? ['pointerup', 'pointercancel']
-        : (('ontouchend' in window) ? ['touchend', 'touchcancel'] : ['mouseup']);
-      if (isTouch && e && e.cancelable) e.preventDefault();
-      cutoutDragMoveEvent = moveEvent;
-      cutoutDragMoveHandler = (ev) => cutoutDragMove(ev);
-      window.addEventListener(moveEvent, cutoutDragMoveHandler, { passive: false });
-      cutoutDragEndEvents = endEvents;
-      endEvents.forEach((evtName) => window.addEventListener(evtName, cutoutEndDrag, { once: true }));
+      window.addEventListener('mousemove', cutoutDragMove);
+      window.addEventListener('mouseup', cutoutEndDrag, { once: true });
     }
 
     function cutoutDragMove(e) {
       if (!isCutoutDragging) return;
       cutoutSetTimeFromEvent(e);
-      if (e && e.cancelable) e.preventDefault();
     }
 
     function cutoutEndDrag() {
       if (!isCutoutDragging) return;
       isCutoutDragging = false;
       document.body.style.userSelect = '';
-      if (cutoutDragMoveEvent && cutoutDragMoveHandler) {
-        window.removeEventListener(cutoutDragMoveEvent, cutoutDragMoveHandler);
-      }
-      if (Array.isArray(cutoutDragEndEvents)) {
-        cutoutDragEndEvents.forEach((evtName) => window.removeEventListener(evtName, cutoutEndDrag));
-      }
-      cutoutDragMoveEvent = '';
-      cutoutDragMoveHandler = null;
-      cutoutDragEndEvents = [];
+      window.removeEventListener('mousemove', cutoutDragMove);
       if (cutoutIsPlaying) {
         cutoutStartTimeAtPlay = cutoutCurrentTime;
         cutoutPlayStartTs = performance.now();
@@ -4930,13 +4894,10 @@
     }
     function cutoutTimeFromEvent(e) {
       const track = document.getElementById('cutout-ruler-area');
-      const cx = getPointerClientX(e);
-      if (!track || cx === null) return cutoutCurrentTime || 0;
+      if (!track) return cutoutCurrentTime || 0;
       const rect = track.getBoundingClientRect();
-      const width = rect.width || track.offsetWidth || 0;
-      if (width <= 0) return cutoutCurrentTime || 0;
-      const x = Math.max(0, Math.min(width, cx - rect.left));
-      const t = (width > 0) ? (x / width) * cutoutDuration : (cutoutCurrentTime || 0);
+      const x = Math.max(0, Math.min(rect.width, (e.clientX || 0) - rect.left));
+      const t = (rect.width > 0) ? (x / rect.width) * cutoutDuration : (cutoutCurrentTime || 0);
       return Math.max(0, Math.min(cutoutDuration, t));
     }
     function handleCutoutEffectDrop(e) {
@@ -23479,6 +23440,11 @@
       }
     }
 
+    /* Helper function to check if on mobile */
+    function isMobileView() {
+      return window.innerWidth <= 768;
+    }
+
     /* Added sidebar toggle functions for mobile */
     function toggleLeftSidebar() {
       const sidebar = document.getElementById('left-sidebar');
@@ -23489,7 +23455,10 @@
       
       if (!isOpen) {
         sidebar.classList.add('open');
-        overlay.classList.add('active');
+        // Only show overlay on mobile
+        if (isMobileView()) {
+          overlay.classList.add('active');
+        }
       }
     }
 
@@ -23502,7 +23471,10 @@
       
       if (!isOpen) {
         sidebar.classList.add('open');
-        overlay.classList.add('active');
+        // Only show overlay on mobile
+        if (isMobileView()) {
+          overlay.classList.add('active');
+        }
       }
     }
 
@@ -23512,6 +23484,19 @@
       closeCutoutMobilePanels(true);
       document.getElementById('sidebar-overlay').classList.remove('active');
     }
+    
+    /* Ensure overlay is removed on desktop */
+    function ensureNoOverlayOnDesktop() {
+      if (!isMobileView()) {
+        const overlay = document.getElementById('sidebar-overlay');
+        if (overlay && overlay.classList.contains('active')) {
+          overlay.classList.remove('active');
+        }
+      }
+    }
+    
+    // Monitor window resize to remove overlay if switching to desktop
+    window.addEventListener('resize', ensureNoOverlayOnDesktop);
 
     // Timeline rib drag functionality
     function startRibDrag(event, frameIndex, side) {
@@ -24350,6 +24335,95 @@
     // Prevent default browser behavior when dropping files outside frames
     window.addEventListener('dragover', (e) => e.preventDefault());
     window.addEventListener('drop', (e) => e.preventDefault());
+    
+    /* Mobile-specific tap event listeners for lasso and effects tools */
+    function initMobileLassoAndEffectsListeners() {
+      // Lasso tools that need sidebar close on mobile
+      const lassoTools = [
+        'select-lasso-btn',
+        'eraser-lasso-btn', 
+        'extend-lasso-btn',
+        'detail-btn'
+      ];
+      
+      lassoTools.forEach(toolId => {
+        const toolBtn = document.getElementById(toolId);
+        if (toolBtn && !toolBtn.hasAttribute('data-mobile-listener')) {
+          // Mark to prevent duplicate listeners
+          toolBtn.setAttribute('data-mobile-listener', 'true');
+          
+          // Add a tap handler that works on both desktop and mobile
+          // but only closes sidebar on mobile
+          toolBtn.addEventListener('click', function(e) {
+            // On mobile, when a lasso tool is clicked, close the sidebar
+            // The tool's onclick will still fire and activate the tool
+            if (isMobileView()) {
+              // Small delay to let the tool activation happen first
+              setTimeout(() => {
+                closeSidebars();
+              }, 50);
+            }
+          }, { passive: true });
+        }
+      });
+      
+      // Effects tools in the effects list
+      const effectsList = document.getElementById('effects-list');
+      if (effectsList && !effectsList.hasAttribute('data-mobile-listener')) {
+        effectsList.setAttribute('data-mobile-listener', 'true');
+        
+        const effectItems = effectsList.querySelectorAll('[data-effect-id]');
+        effectItems.forEach(effectItem => {
+          effectItem.addEventListener('click', function(e) {
+            if (isMobileView()) {
+              // When an effect is clicked on mobile, close the sidebar after a small delay
+              // so the user can see it was activated
+              setTimeout(() => {
+                closeSidebars();
+              }, 50);
+            }
+          }, { passive: true });
+        });
+      }
+      
+      // Timeline effects tools in the timeline effects list
+      const timelineEffectsList = document.getElementById('timeline-effects-list');
+      if (timelineEffectsList && !timelineEffectsList.hasAttribute('data-mobile-listener')) {
+        timelineEffectsList.setAttribute('data-mobile-listener', 'true');
+        
+        const timelineEffectItems = timelineEffectsList.querySelectorAll('[data-effect-id]');
+        timelineEffectItems.forEach(effectItem => {
+          effectItem.addEventListener('click', function(e) {
+            if (isMobileView()) {
+              // When a timeline effect is clicked on mobile, close the sidebar after a small delay
+              setTimeout(() => {
+                closeSidebars();
+              }, 50);
+            }
+          }, { passive: true });
+        });
+      }
+      
+      // Magic tools list items
+      const magicToolsList = document.getElementById('magic-tools-list');
+      if (magicToolsList && !magicToolsList.hasAttribute('data-mobile-listener')) {
+        magicToolsList.setAttribute('data-mobile-listener', 'true');
+        
+        const magicToolItems = magicToolsList.querySelectorAll('[data-effect-id]');
+        magicToolItems.forEach(effectItem => {
+          effectItem.addEventListener('click', function(e) {
+            if (isMobileView()) {
+              setTimeout(() => {
+                closeSidebars();
+              }, 50);
+            }
+          }, { passive: true });
+        });
+      }
+    }
+    
+    // Initialize mobile listeners on load
+    initMobileLassoAndEffectsListeners();
   </script>
 </body>
 </html>
